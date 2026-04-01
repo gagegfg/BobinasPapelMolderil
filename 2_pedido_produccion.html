@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2. Pedido Producción - Molderil S.A.</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .th-resize { resize: horizontal; overflow: auto; position: relative; background-clip: padding-box; }
+        .th-resize::-webkit-scrollbar { height: 0px; width: 0px; }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        const generateId = () => Date.now() + Math.random();
+
+        const Icon = ({ name, size = 18 }) => {
+            const paths = {
+                plus: "M12 5v14M5 12h14",
+                trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+                printer: "M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z",
+                filePdf: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+                arrowLeft: "M19 12H5M12 19l-7-7 7-7"
+            };
+            return (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={paths[name]} />
+                </svg>
+            );
+        };
+
+        const App = () => {
+            const today = new Date().toISOString().split('T')[0];
+            const formatDateDisplay = (dateStr) => {
+                if (!dateStr) return '--/--/----';
+                const [year, month, day] = dateStr.split('-');
+                return `${day}/${month}/${year}`;
+            };
+
+            const [fechaPedido, setFechaPedido] = useState(today);
+            const [solicitante, setSolicitante] = useState("");
+            
+            const [rows, setRows] = useState(() => {
+                const saved = localStorage.getItem('molderilPedidosRows');
+                if (saved) {
+                    try { const p = JSON.parse(saved); if (Array.isArray(p)) return p; } catch (e) {}
+                }
+                return [{ id: generateId(), sku: '', tipo: '', proveedor: '', kg: '', ancho: '', gramaje: '', obs: '' }];
+            });
+
+            const [activeDropdown, setActiveDropdown] = useState(null);
+            const [insumosDB, setInsumosDB] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+
+            useEffect(() => { localStorage.setItem('molderilPedidosRows', JSON.stringify(rows)); }, [rows]);
+
+            // Auto-lectura de BOBINAS.xlsx
+            useEffect(() => {
+                const loadDB = async () => {
+                    try {
+                        const response = await fetch('./BOBINAS.xlsx');
+                        if (!response.ok) throw new Error("No se pudo descargar Excel");
+                        const buf = await response.arrayBuffer();
+                        const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        const parsed = [];
+                        for (let i = 1; i < data.length; i++) {
+                            const r = data[i];
+                            if (Array.isArray(r) && r.join("").trim() !== "") {
+                                parsed.push({
+                                    proveedor: String(r[0] || '').trim().toUpperCase(),
+                                    sku: String(r[1] || '').trim().toUpperCase(),
+                                    tipo: String(r[2] || '').trim().toUpperCase(),
+                                    gramaje: String(r[3] || '').trim().toUpperCase(),
+                                    ancho: String(r[4] || '').trim().toUpperCase()
+                                });
+                            }
+                        }
+                        if (parsed.length > 0) setInsumosDB(parsed);
+                    } catch (err) {
+                        console.warn("No detectado BOBINAS localmente");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+                loadDB();
+            }, []);
+
+            const updateRow = (id, field, value) => {
+                const val = typeof value === 'string' ? value.toUpperCase() : value;
+                setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: val } : r));
+            };
+
+            const addRow = () => setRows([...rows, { id: generateId(), sku: '', tipo: '', proveedor: '', ancho: '', gramaje: '', kg: '', obs: '' }]);
+            const removeRow = (id) => {
+                if(rows.length > 1) setRows(rows.filter(r => r.id !== id));
+                else setRows([{ id: generateId(), sku: '', tipo: '', proveedor: '', ancho: '', gramaje: '', kg: '', obs: '' }]);
+            };
+
+            const generarPDF = () => {
+                if (!solicitante.trim()) return alert("Debes indicar el Nombre del Solicitante / Autoriza.");
+                const validRows = rows.filter(r => r.sku && r.kg);
+                if (validRows.length === 0) return alert("Debes cargar al menos un material con SKU y Kg requeridos.");
+
+                const totalKg = validRows.reduce((acc, r) => acc + (parseFloat(String(r.kg).replace(',', '.')) || 0), 0);
+
+                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                
+                doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text("MOLDERIL S.A.", 14, 20);
+                doc.setFontSize(14); doc.setFont("helvetica", "normal"); doc.text("PEDIDO INTERNO A PRODUCCIÓN", 14, 28);
+                
+                doc.setFontSize(10);
+                doc.text(`Fecha Solicitud: ${formatDateDisplay(fechaPedido)}`, 14, 38);
+                doc.text(`Solicitante / Encargado: ${solicitante.toUpperCase()}`, 14, 44);
+                
+                doc.text(`Cantidad de Útiles Solicitados: ${validRows.length}`, 14, 52);
+                doc.setFont("helvetica", "bold");
+                doc.text(`KILOS TOTALES REQUERIDOS: ${totalKg.toLocaleString('es-AR')} kg`, 100, 52);
+
+                doc.autoTable({
+                    startY: 58,
+                    head: [['SKU', 'Tipo de Papel', 'Proveedor Sugerido', 'Kg Necesarios', 'Despachado (Logística)']],
+                    body: validRows.map(r => [
+                        r.sku, 
+                        `${r.tipo} (${r.gramaje}gr - ${r.ancho}mm)`, 
+                        r.proveedor || '-', 
+                        `${r.kg} KG`, 
+                        '' // Columna vacía para la lapicera del operador
+                    ]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129] }, // Emerald-500
+                    styles: { fontSize: 10, cellPadding: 4 },
+                    columnStyles: {
+                        4: { cellWidth: 40 } // Espacio libre
+                    }
+                });
+
+                const finalY = doc.lastAutoTable.finalY || 100;
+
+                doc.setFont("helvetica", "normal");
+                if (finalY < 250) {
+                    doc.text("________________________________", 20, finalY + 40);
+                    doc.text("Firma Solicitante", 35, finalY + 45);
+                    doc.text("________________________________", 110, finalY + 40);
+                    doc.text("Firma Responsable Despacho", 115, finalY + 45);
+                }
+
+                doc.save(`Pedido_Produccion_${formatDateDisplay(fechaPedido).replace(/\//g, '-')}.pdf`);
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 relative pb-20">
+                    <nav className="bg-emerald-900 shadow-xl px-4 sm:px-8 py-4 no-print flex justify-between items-center z-40 relative">
+                        <div>
+                            <span className="text-white text-lg font-black tracking-tighter uppercase block"><Icon name="filePdf" size={16} /> Requerimientos</span>
+                            <span className="text-emerald-400 text-xs font-bold uppercase tracking-widest">MOLDERIL S.A.</span>
+                        </div>
+                        <a href="index.html" className="text-white hover:text-emerald-300 font-bold text-sm bg-emerald-800 px-4 py-2 rounded-lg flex items-center gap-2 border border-emerald-700 transition-colors">
+                            <Icon name="arrowLeft" size={14} /> Volver a Menú
+                        </a>
+                    </nav>
+
+                    <main className="max-w-7xl mx-auto p-4 sm:p-8">
+                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-10">
+                            
+                            <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                                📝 Generar Solicitud Interna
+                            </h2>
+                            <p className="text-slate-500 mt-2 mb-8 border-b border-slate-100 pb-6">Arme la lista con los kilos requeridos por SKU para que depósito proceda al despacho.</p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Fecha Solicitud</label>
+                                    <input type="date" value={fechaPedido} onChange={e => setFechaPedido(e.target.value)} className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 p-3 font-bold shadow-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Solicitante / Sector</label>
+                                    <input type="text" placeholder="Ej: Juan Pérez - Máquina 3" value={solicitante} onChange={e => setSolicitante(e.target.value)} className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 p-3 font-bold shadow-sm" />
+                                </div>
+                            </div>
+
+                            <div className="w-full overflow-x-auto border border-emerald-300 rounded-xl shadow-sm mb-6 ${activeDropdown ? 'pb-40' : 'pb-0'} transition-all">
+                                <table className="w-full border-collapse text-left min-w-[800px]">
+                                    <thead>
+                                        <tr className="bg-emerald-100 text-emerald-900 text-xs uppercase tracking-wider">
+                                            <th className="p-4 border-b border-emerald-200 w-1/4">SKU / Artículo</th>
+                                            <th className="p-4 border-b border-emerald-200 w-1/4">Tipo Papel</th>
+                                            <th className="p-4 border-b border-emerald-200 w-1/4">Prov Sugerido</th>
+                                            <th className="p-4 border-b border-emerald-200 w-1/6 bg-emerald-200 text-center rounded-tr">Kg Necesarios</th>
+                                            <th className="p-4 border-b border-emerald-200 text-center w-12">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm bg-white font-medium text-slate-700">
+                                        {rows.map(row => (
+                                            <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                                
+                                                {/* AUTOCOMPLETE SKU */}
+                                                <td className="p-0 border-r border-slate-100 relative">
+                                                    <input 
+                                                        className="w-full p-4 outline-none uppercase font-black text-blue-800 bg-transparent placeholder-slate-300"
+                                                        value={row.sku} placeholder="Buscar SKU..."
+                                                        onChange={e => updateRow(row.id, 'sku', e.target.value)}
+                                                        onFocus={() => setActiveDropdown({ id: row.id, field: 'sku' })}
+                                                        onBlur={() => setTimeout(() => setActiveDropdown(null), 250)}
+                                                    />
+                                                    {activeDropdown?.id === row.id && activeDropdown?.field === 'sku' && (
+                                                        <div className="absolute z-50 left-0 top-full mt-1 w-full min-w-[300px] max-h-[250px] overflow-auto border border-slate-300 shadow-2xl rounded-lg bg-white">
+                                                            {insumosDB.filter(item => {
+                                                                if(!row.sku) return true;
+                                                                return item.sku.includes(row.sku);
+                                                            }).filter((item, idx, self) => idx === self.findIndex(t => t.sku === item.sku)).slice(0,50).map((item, idx) => (
+                                                                <div key={idx} className="p-3 border-b border-slate-100 hover:bg-emerald-50 cursor-pointer" onClick={() => {
+                                                                    updateRow(row.id, 'sku', item.sku);
+                                                                    updateRow(row.id, 'tipo', item.tipo);
+                                                                    updateRow(row.id, 'proveedor', item.proveedor);
+                                                                    updateRow(row.id, 'gramaje', item.gramaje);
+                                                                    updateRow(row.id, 'ancho', item.ancho);
+                                                                    setActiveDropdown(null);
+                                                                }}>
+                                                                    <div className="font-black text-emerald-800 flex justify-between">
+                                                                        <span>{item.sku}</span>
+                                                                        <span className="text-xs font-normal text-slate-500">{item.gramaje}gr - {item.ancho}mm</span>
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-500 uppercase tracking-tight">{item.proveedor} | {item.tipo}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* AUTOCOMPLETE TIPO */}
+                                                <td className="p-0 border-r border-slate-100 relative">
+                                                    <input 
+                                                        className="w-full p-4 outline-none uppercase bg-transparent text-xs"
+                                                        value={row.tipo} placeholder="Buscar Tipo..."
+                                                        onChange={e => updateRow(row.id, 'tipo', e.target.value)}
+                                                        onFocus={() => setActiveDropdown({ id: row.id, field: 'tipo' })}
+                                                        onBlur={() => setTimeout(() => setActiveDropdown(null), 250)}
+                                                    />
+                                                    {activeDropdown?.id === row.id && activeDropdown?.field === 'tipo' && (
+                                                        <div className="absolute z-50 left-0 top-full mt-1 w-[300px] max-h-[250px] overflow-auto border border-slate-300 shadow-2xl rounded-lg bg-white">
+                                                            {insumosDB.filter(item => {
+                                                                if(!row.tipo) return true;
+                                                                return item.tipo.includes(row.tipo);
+                                                            }).filter((item, idx, self) => idx === self.findIndex(t => t.tipo === item.tipo)).slice(0,50).map((item, idx) => (
+                                                                <div key={idx} className="p-3 border-b border-slate-100 hover:bg-emerald-50 cursor-pointer" onClick={() => {
+                                                                    updateRow(row.id, 'sku', item.sku);
+                                                                    updateRow(row.id, 'tipo', item.tipo);
+                                                                    updateRow(row.id, 'proveedor', item.proveedor);
+                                                                    setActiveDropdown(null);
+                                                                }}>
+                                                                    <div className="font-black text-emerald-800">{item.tipo}</div>
+                                                                    <div className="text-xs text-slate-500 uppercase">{item.proveedor} / {item.sku}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                <td className="p-2 border-r border-slate-100 uppercase text-xs text-slate-500 font-bold">{row.proveedor || '-'}</td>
+                                                
+                                                <td className="p-0 border-r border-slate-100 bg-emerald-50/50">
+                                                    <input 
+                                                        type="number"
+                                                        className="w-full p-4 outline-none text-center font-black text-emerald-900 bg-transparent text-lg placeholder-emerald-300"
+                                                        value={row.kg} placeholder="KILOS"
+                                                        onChange={e => updateRow(row.id, 'kg', e.target.value)}
+                                                    />
+                                                </td>
+
+                                                <td className="p-2 text-center">
+                                                    <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-white hover:bg-red-500 p-2 rounded-lg transition-colors"><Icon name="trash" size={18} /></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <button onClick={addRow} className="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-900 shadow active:scale-95 text-sm mb-12 uppercase tracking-widest"><Icon name="plus" /> Sumar Artículo al Pedido</button>
+
+                            <div className="border-t-2 border-slate-100 pt-8 flex justify-between items-center bg-slate-50 p-6 rounded-2xl">
+                                <div>
+                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Resumen de Solicitud</p>
+                                    <p className="text-3xl font-black text-emerald-700 mt-1">{rows.filter(r => r.sku && r.kg).length} items listos</p>
+                                </div>
+                                <button onClick={generarPDF} className="bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black flex items-center gap-3 hover:bg-emerald-700 shadow-xl transition-all active:scale-95 text-xl tracking-tight">
+                                    <Icon name="printer" size={28} /> Generar Hoja de Pedido
+                                </button>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

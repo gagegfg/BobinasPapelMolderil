@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1. Recepción de Bobinas - Molderil S.A.</title>
+
+    <!-- Librerías -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        @media print {
+            body { background: white !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-after: always !important; break-after: page !important; }
+            .print-area { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+        }
+        @page { margin: 0; size: A4 portrait; }
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; padding: 5px; }
+        #reader-relabel button { background-color: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; margin: 5px; cursor: pointer; border: none; }
+        #reader-relabel select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; width: 100%; }
+        .th-resize { resize: horizontal; overflow: auto; position: relative; background-clip: padding-box; }
+        .th-resize::-webkit-scrollbar { height: 0px; width: 0px; }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
+
+        const generateId = () => Date.now() + Math.random();
+        const generateUID = () => {
+            const now = new Date();
+            const yy = String(now.getFullYear()).slice(-2);
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const ms = String(now.getMilliseconds()).padStart(3, '0');
+            const rnd = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+            return `${dd}${mm}${yy}-${hh}${min}${ss}-${ms}${rnd}`;
+        };
+
+        const Icon = ({ name, size = 18 }) => {
+            const paths = {
+                plus: "M12 5v14M5 12h14",
+                trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+                printer: "M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z",
+                tag: "M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01",
+                upload: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12",
+                close: "M18 6L6 18 M6 6l12 12",
+                save: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8",
+                folder: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z",
+                edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
+                box: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12",
+                sort: "M4 6h16M4 12h10M4 18h4",
+                check: "M20 6L9 17l-5-5",
+                arrowLeft: "M19 12H5M12 19l-7-7 7-7"
+            };
+            return (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={paths[name]} />
+                </svg>
+            );
+        };
+
+        const QRCodeCanvas = ({ text, size = 140 }) => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                if (!canvasRef.current || !window.QRCode) return;
+                canvasRef.current.innerHTML = '';
+                new window.QRCode(canvasRef.current, {
+                    text: text, width: size, height: size,
+                    colorDark : "#000000", colorLight : "#ffffff",
+                    correctLevel : window.QRCode.CorrectLevel.M
+                });
+            }, [text, size]);
+            return <div ref={canvasRef} style={{ width: size, height: size }} title="QR Code Seguro" />;
+        };
+
+        const BobinaLabel = ({ row, empresa, formatDateDisplay }) => {
+            const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.MADRE: ${row.loteMadre} | L.HIJA: ${row.loteHija} | CORTE: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
+
+            return (
+                <div className="label-page bg-white box-border print:shadow-none shadow-xl mb-4 overflow-hidden" style={{ width: '794px', minWidth: '794px', height: '1123px', minHeight: '1123px', padding: '38px', margin: '0 auto', pageBreakAfter: 'always', breakAfter: 'page' }}>
+                    <div className="w-full h-full border-[6px] border-double border-black flex flex-col justify-between p-[30px] box-border relative">
+
+                        <div className="text-center border-b-8 border-black pb-4 shrink-0">
+                            <h1 className="font-black mb-1 tracking-tighter" style={{ fontSize: '56px', lineHeight: '1' }}>{empresa}</h1>
+                            <p className="text-[20px] font-bold tracking-[0.4em] text-gray-500 uppercase">IDENTIFICACIÓN DE BOBINA</p>
+                        </div>
+
+                        <div className="flex-grow py-4 flex flex-col justify-between overflow-hidden">
+                            <div className="flex justify-between items-stretch gap-4">
+                                <div className="flex-1 flex flex-col justify-between py-1 gap-2">
+                                    <div className="border-l-8 border-black pl-4 shrink-0">
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Proveedor</p>
+                                        <p className="text-[36px] font-black uppercase leading-none truncate mt-1">{row.proveedor || 'S/D'}</p>
+                                    </div>
+                                    <div className="border-l-8 border-blue-600 pl-4 shrink-0">
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">SKU / Artículo</p>
+                                        <p className="text-[30px] font-black uppercase text-blue-800 leading-none truncate mt-1">{row.sku || 'S/D'}</p>
+                                    </div>
+                                    <div className="border-l-8 border-black pl-4 pr-2 overflow-hidden h-full flex flex-col justify-start">
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tipo de Papel</p>
+                                        <p className="text-[24px] font-bold uppercase leading-tight break-words">{row.tipo || 'S/D'}</p>
+                                    </div>
+                                </div>
+                                <div className="w-[180px] shrink-0 flex flex-col items-center justify-center p-3 border-4 border-dashed border-gray-200 bg-gray-50 rounded-xl">
+                                    <QRCodeCanvas text={qrData} size={140} />
+                                    <p className="text-[10px] font-mono mt-2 text-gray-800 font-bold uppercase tracking-widest text-center w-full">ID: {row.uid}</p>
+                                </div>
+                            </div>
+
+                            <div className={`grid ${row.corte ? 'grid-cols-2' : 'grid-cols-1'} gap-4 my-6`}>
+                                {row.corte && (
+                                    <div className="bg-black text-white p-6 flex flex-col items-center justify-center text-center rounded-sm">
+                                        <p className="text-[18px] font-bold uppercase opacity-70 mb-1 tracking-widest">Corte B. Hija</p>
+                                        <div className="flex items-baseline justify-center">
+                                            <p className="text-[72px] font-black leading-none">{row.corte}</p>
+                                            <span className="text-[20px] ml-1 uppercase font-bold">mm</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="border-8 border-black p-6 flex flex-col items-center justify-center text-center rounded-sm">
+                                    <p className="text-[18px] font-bold uppercase text-gray-500 mb-1 tracking-widest">Peso Neto</p>
+                                    <div className="flex items-baseline justify-center text-blue-900">
+                                        <p className="text-[96px] font-black leading-none">{row.kg || '0'}</p>
+                                        <span className="text-[24px] ml-2 uppercase font-bold">kg</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-gray-800 border-t-4 border-gray-200 pt-6 mt-2">
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Gramaje</p>
+                                    <p className="text-[36px] font-black">{row.gramaje || '---'} <span className="text-[18px] text-gray-400 font-bold uppercase">gr/m²</span></p>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Ancho Orig.</p>
+                                    <p className="text-[36px] font-black">{row.ancho || '---'} <span className="text-[18px] text-gray-400 font-bold uppercase">mm</span></p>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Lote Madre</p>
+                                    <p className="text-[24px] font-mono font-bold break-all leading-none">{row.loteMadre || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Lote Hija</p>
+                                    <p className="text-[24px] font-mono font-bold break-all leading-none">{row.loteHija || 'N/A'}</p>
+                                </div>
+                            </div>
+
+                            {row.obs && (
+                                <div className="bg-gray-100 p-4 mt-6 rounded shrink-0">
+                                    <p className="text-[10px] font-bold uppercase text-gray-500 tracking-widest mb-1">Observaciones</p>
+                                    <p className="text-[16px] font-bold text-gray-700 leading-snug truncate">{row.obs}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t-4 border-black pt-4 flex justify-between items-end mt-4 shrink-0">
+                            <div>
+                                <p className="text-[14px] font-bold uppercase text-gray-500">Fecha de Registro</p>
+                                <p className="text-[24px] font-black">{formatDateDisplay(row.fecha)}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] text-gray-400 font-mono tracking-widest uppercase">Molderil S.A. Control Interno</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const today = new Date().toISOString().split('T')[0];
+            const empresa = "MOLDERIL S.A.";
+
+            const [showCloseModal, setShowCloseModal] = useState(false);
+            const [isAutoLoadingDB, setIsAutoLoadingDB] = useState(true);
+
+            // Funciones de audio
+            const playSuccessSound = () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start(); osc.stop(ctx.currentTime + 0.1);
+            };
+
+            const [rows, setRows] = useState(() => {
+                const saved = localStorage.getItem('molderilRows');
+                if (saved) {
+                    try { 
+                        const parsed = JSON.parse(saved); 
+                        if (Array.isArray(parsed)) return parsed;
+                    } catch (e) {}
+                }
+                return [{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }];
+            });
+
+            const [activeDropdown, setActiveDropdown] = useState(null);
+            const [isRelabelScanning, setIsRelabelScanning] = useState(false);
+            const [previewRow, setPreviewRow] = useState(null);
+            const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
+
+            const [insumosDB, setInsumosDB] = useState([]);
+
+            const scannerRefRelabel = useRef(null);
+            const lastRelabelScannedTime = useRef(0);
+
+            const formatDateDisplay = (dateStr) => {
+                if (!dateStr) return '--/--/----';
+                const [year, month, day] = dateStr.split('-');
+                return `${day}/${month}/${year}`;
+            };
+            const unformatDateDisplay = (displayStr) => {
+                if (!displayStr || displayStr.includes('--')) return today;
+                const [day, month, year] = displayStr.split('/');
+                return `${year}-${month}-${day}`;
+            };
+
+            // Auto-guardado
+            useEffect(() => { localStorage.setItem('molderilRows', JSON.stringify(rows)); }, [rows]);
+
+            // Auto-cargado de BOBINAS.xlsx
+            useEffect(() => {
+                const cargarBaseDatosAutomatica = async () => {
+                    try {
+                        const response = await fetch('./BOBINAS.xlsx');
+                        if (!response.ok) throw new Error("No se pudo hallar archivo");
+                        const arrayBuffer = await response.arrayBuffer();
+                        const dataBytes = new Uint8Array(arrayBuffer);
+                        const wb = XLSX.read(dataBytes, { type: 'array' });
+                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        const parsed = [];
+                        for (let i = 1; i < data.length; i++) {
+                            const rowData = data[i];
+                            if (Array.isArray(rowData) && rowData.join("").trim() !== "") {
+                                parsed.push({
+                                    proveedor: String(rowData[0] || '').trim().toUpperCase(),
+                                    sku: String(rowData[1] || '').trim().toUpperCase(),
+                                    tipo: String(rowData[2] || '').trim().toUpperCase(),
+                                    gramaje: String(rowData[3] || '').trim().toUpperCase(),
+                                    ancho: String(rowData[4] || '').trim().toUpperCase()
+                                });
+                            }
+                        }
+                        if (parsed.length > 0) {
+                            setInsumosDB(parsed);
+                            console.log("Base cargada automáticamente:", parsed.length, "ítems");
+                        }
+                    } catch (error) {
+                        console.warn("Autocarga excel fallida. Usar botón manual.", error);
+                    } finally {
+                        setIsAutoLoadingDB(false);
+                    }
+                };
+                cargarBaseDatosAutomatica();
+            }, []);
+
+            const totalKg = useMemo(() => (Array.isArray(rows) ? rows : []).reduce((acc, r) => acc + (parseFloat(String((r && r.kg) || '').replace(',', '.')) || 0), 0), [rows]);
+
+            const subtotalesPorSKU = useMemo(() => {
+                const map = {};
+                (Array.isArray(rows) ? rows : []).forEach(r => {
+                    if (!r || !r.kg) return;
+                    const key = r.sku || 'Sin SKU';
+                    if (!map[key]) map[key] = { sku: key, proveedor: r.proveedor, tipo: r.tipo, count: 0, kg: 0 };
+                    map[key].count += 1;
+                    map[key].kg += (parseFloat(String(r.kg || '').replace(',', '.')) || 0);
+                });
+                return Object.values(map).sort((a, b) => a.sku.localeCompare(b.sku));
+            }, [rows]);
+
+            const updateRow = (id, field, value) => {
+                const upperValue = (typeof value === 'string' && field !== 'fecha') ? value.toUpperCase() : value;
+                setRows(prevRows => prevRows.map(r => r.id === id ? { ...r, [field]: upperValue } : r));
+            };
+
+            const addRow = () => setRows([...rows, { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]);
+            const removeRow = (id) => { 
+                if (rows.length > 1) setRows(rows.filter(r => r.id !== id));
+                else setRows([{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]);
+            };
+
+            const sortBobinas = () => {
+                const sorted = [...rows].sort((a, b) => {
+                    const skuA = (a.sku || '').toLowerCase(); const skuB = (b.sku || '').toLowerCase();
+                    if (skuA < skuB) return -1; if (skuA > skuB) return 1;
+                    const loteA = (a.loteHija || '').toLowerCase(); const loteB = (b.loteHija || '').toLowerCase();
+                    if (loteA < loteB) return -1; if (loteA > loteB) return 1;
+                    return 0;
+                });
+                setRows(sorted);
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const dataBytes = new Uint8Array(evt.target.result);
+                        const wb = XLSX.read(dataBytes, { type: 'array' });
+                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        const parsed = [];
+                        for (let i = 1; i < data.length; i++) {
+                            const rowData = data[i];
+                            if (Array.isArray(rowData) && rowData.join("").trim() !== "") {
+                                parsed.push({
+                                    proveedor: String(rowData[0] || '').trim().toUpperCase(),
+                                    sku: String(rowData[1] || '').trim().toUpperCase(),
+                                    tipo: String(rowData[2] || '').trim().toUpperCase(),
+                                    gramaje: String(rowData[3] || '').trim().toUpperCase(),
+                                    ancho: String(rowData[4] || '').trim().toUpperCase()
+                                });
+                            }
+                        }
+                        if (parsed.length > 0) { setInsumosDB(parsed); alert(`Se cargaron ${parsed.length} insumos mediante el botón manual.`); }
+                    } catch (error) { alert("Error al leer el Excel."); }
+                    e.target.value = null;
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            const exportarProyecto = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rows));
+                const a = document.createElement('a');
+                a.setAttribute("href", dataStr);
+                a.setAttribute("download", `Proyecto_Ingresos_${formatDateDisplay(today).replace(/\//g, '-')}.json`);
+                document.body.appendChild(a); a.click(); a.remove();
+            };
+
+            const importarProyecto = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const imported = JSON.parse(evt.target.result);
+                        const sanitized = imported.map(r => ({ ...r, uid: r.uid || generateUID() }));
+                        if (Array.isArray(sanitized)) { setRows(sanitized); alert("Lista cargada."); }
+                    } catch (error) { alert("Archivo inválido."); }
+                    e.target.value = null;
+                };
+                reader.readAsText(file);
+            };
+
+            const procesarCierreLista = () => {
+                const validRows = rows.filter(r => r.proveedor || r.kg);
+                if (validRows.length === 0) { alert("La planilla está vacía."); setShowCloseModal(false); return; }
+
+                const invalidRows = validRows.filter(r => !r.proveedor || !r.kg || !r.tipo);
+                if (invalidRows.length > 0) {
+                    alert(`Hay ${invalidRows.length} fila(s) incompleta(s). Completa Proveedor, Tipo y Kg.`);
+                    setShowCloseModal(false); return;
+                }
+
+                setShowCloseModal(false);
+
+                setTimeout(async () => {
+                    try {
+                        const labelsContainer = document.getElementById('labels-print-container');
+                        labelsContainer.classList.remove('hidden');
+                        labelsContainer.style.display = 'block';
+                        labelsContainer.style.position = 'fixed';
+                        labelsContainer.style.top = '0px';
+                        labelsContainer.style.left = '0px';
+                        labelsContainer.style.zIndex = '-9999';
+                        labelsContainer.style.width = '210mm';
+
+                        await new Promise(resolve => setTimeout(resolve, 800));
+
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text(empresa, 14, 20);
+                        doc.setFontSize(14); doc.setFont("helvetica", "normal"); doc.text("REPORTE OFICIAL DEL PALLET (INGRESOS)", 14, 28);
+                        doc.setFontSize(10); doc.text(`Generado: ${formatDateDisplay(today)}`, 14, 34);
+                        doc.text(`Total Bobinas: ${validRows.length} | Kilos Totales: ${totalKg.toLocaleString('es-AR')} kg`, 14, 39);
+
+                        doc.autoTable({
+                            startY: 45,
+                            head: [['Proveedor', 'Tipo', 'SKU', 'Gramaje', 'Ancho', 'Corte', 'L.Hija', 'Kg']],
+                            body: validRows.map(r => [r.proveedor, r.tipo, r.sku, r.gramaje, r.ancho, r.corte || '-', r.loteHija || '-', `${r.kg}`]),
+                            theme: 'grid', headStyles: { fillColor: [55, 65, 81] }, styles: { fontSize: 8 },
+                        });
+
+                        if (subtotalesPorSKU.length > 0) {
+                            let endY = doc.lastAutoTable.finalY + 15;
+                            if (endY + 30 > 280) { doc.addPage(); endY = 20; }
+                            doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("RESUMEN GLOBAL - KILOS POR PAPEL", 14, endY);
+                            endY += 8;
+                            let x = 14; let y = endY; const rectWidth = 87; const rectHeight = 25; const padding = 4;
+                            subtotalesPorSKU.forEach((sub, i) => {
+                                if (x + rectWidth > 200) { x = 14; y += rectHeight + 5; }
+                                if (y + rectHeight > 280) { doc.addPage(); x = 14; y = 20; }
+                                doc.setDrawColor(200, 200, 200); doc.setFillColor(245, 248, 255);
+                                doc.roundedRect(x, y, rectWidth, rectHeight, 2, 2, 'FD');
+                                doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+                                doc.text(sub.sku.toUpperCase(), x + padding, y + padding + 4);
+                                doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+                                doc.text(`${sub.proveedor} | ${sub.tipo}`, x + padding, y + padding + 8);
+                                doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
+                                doc.text(`${sub.kg.toLocaleString('es-AR')} kg`, x + padding, y + padding + 15);
+                                doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+                                doc.text(`${sub.count} bobinas`, x + rectWidth - padding - 22, y + padding + 15);
+                                doc.setTextColor(0, 0, 0); x += rectWidth + 5;
+                            });
+                        }
+
+                        const labelNodes = Array.from(labelsContainer.querySelectorAll('.label-page'));
+                        for (let i = 0; i < labelNodes.length; i++) {
+                            const node = labelNodes[i];
+                            doc.addPage('a4', 'portrait');
+                            const canvas = await window.html2canvas(node, { scale: 2, useCORS: true, letterRendering: true, windowWidth: 794, scrollY: 0, scrollX: 0 });
+                            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                            doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        }
+
+                        doc.save(`Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
+
+                        labelsContainer.style.display = ''; labelsContainer.style.position = '';
+                        labelsContainer.style.top = ''; labelsContainer.style.left = '';
+                        labelsContainer.style.zIndex = ''; labelsContainer.style.width = '';
+                        labelsContainer.classList.add('hidden');
+                        
+                    } catch (err) {
+                        console.error(err); alert("Hubo un error al generar el PDF.");
+                    }
+                }, 100);
+            };
+
+            const closeRelabelScanner = () => {
+                if (scannerRefRelabel.current) {
+                    scannerRefRelabel.current.clear().then(() => {
+                        scannerRefRelabel.current = null; setIsRelabelScanning(false);
+                    }).catch(() => {
+                        scannerRefRelabel.current = null; setIsRelabelScanning(false);
+                    });
+                } else { setIsRelabelScanning(false); }
+            };
+
+            useEffect(() => {
+                if (isRelabelScanning) {
+                    scannerRefRelabel.current = new Html5QrcodeScanner("reader-relabel", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+                    scannerRefRelabel.current.render(
+                        (decodedText) => {
+                            if (Date.now() - lastRelabelScannedTime.current < 2000) return;
+                            lastRelabelScannedTime.current = Date.now();
+
+                            if (decodedText.startsWith("MOLDERIL SA")) {
+                                const parts = decodedText.split(" | ");
+                                let newRow = { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: 'Re-etiquetado' };
+                                parts.forEach(p => {
+                                    if (p.startsWith("PROV: ")) newRow.proveedor = p.replace("PROV: ", "");
+                                    if (p.startsWith("TIPO: ")) newRow.tipo = p.replace("TIPO: ", "");
+                                    if (p.startsWith("KG: ")) newRow.kg = p.replace("KG: ", "");
+                                    if (p.startsWith("L.MADRE: ")) newRow.loteMadre = p.replace("L.MADRE: ", "");
+                                    if (p.startsWith("L.HIJA: ")) newRow.loteHija = p.replace("L.HIJA: ", "");
+                                    if (p.startsWith("CORTE: ")) newRow.corte = p.replace("CORTE: ", "");
+                                    if (p.startsWith("SKU: ")) newRow.sku = p.replace("SKU: ", "");
+                                    if (p.startsWith("GRAMAJE: ")) newRow.gramaje = p.replace("GRAMAJE: ", "");
+                                    if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
+                                    if (p.startsWith("FECHA: ")) newRow.fecha = unformatDateDisplay(p.replace("FECHA: ", ""));
+                                });
+                                setRows(prev => [...prev, newRow]);
+                                playSuccessSound(); closeRelabelScanner();
+                            }
+                        }, () => {}
+                    );
+                }
+            }, [isRelabelScanning]);
+
+            const handlePreview = (row) => {
+                setPreviewRow(row);
+                setPreviewPdfUrl(null);
+                setTimeout(async () => {
+                    try {
+                        const el = document.getElementById('preview-capture-root');
+                        if(!el) return;
+                        const canvas = await window.html2canvas(el, { scale: 2, useCORS: true, letterRendering: true, windowWidth: 794, scrollY: 0, scrollX: 0 });
+                        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+                    } catch (err) { console.error("Error al previsualizar", err); }
+                }, 300);
+            };
+
+            return (
+                <div className="min-h-screen">
+                    {/* MODAL CERRAR LISTA */}
+                    {showCloseModal && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-center items-center p-4 no-print border-blue-500">
+                            <div className="bg-white p-8 rounded-2xl w-full max-w-md text-center shadow-2xl border-t-8 border-blue-600">
+                                <Icon name="printer" size={40} className="mx-auto text-blue-600 mb-4" />
+                                <h3 className="font-black text-2xl mb-3">Imprimir Pallet y Rótulos</h3>
+                                <p className="text-sm text-gray-500 mb-8 border border-gray-100 bg-gray-50 p-4 font-medium tracking-tight rounded-lg">
+                                    Esta acción agrupará las bobinas en PDF listo para imprimir para Logística. Recibirás tu hoja A4 del resumen, seguida de los rótulos a pegar.
+                                </p>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-gray-100 text-gray-800 px-4 py-3 rounded-xl font-bold hover:bg-gray-200">Cancelar</button>
+                                    <button onClick={procesarCierreLista} className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-xl">Confirmar Imprimir</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* NAVBAR */}
+                    <nav className="bg-slate-900 shadow-lg border-b-4 border-blue-500 px-4 sm:px-8 py-4 no-print flex justify-between items-center z-40 relative">
+                        <div>
+                            <span className="text-white text-lg font-black tracking-tighter uppercase block"><Icon name="box" size={16} /> Recepción Logística</span>
+                            <span className="text-blue-400 text-xs font-bold uppercase tracking-widest">{empresa}</span>
+                        </div>
+                        <a href="index.html" className="text-white hover:text-blue-400 font-bold text-sm bg-slate-800 px-4 py-2 rounded-lg flex items-center gap-2 border border-slate-700 hover:border-blue-500 transition-colors">
+                            <Icon name="arrowLeft" size={14} /> Volver a Menú
+                        </a>
+                    </nav>
+
+                    <div className="p-4 md:p-8">
+                        {/* PREVIEW */}
+                        {previewRow && (
+                            <>
+                                <div className="fixed inset-0 bg-slate-900/90 z-50 flex flex-col justify-center items-center p-4 no-print text-center">
+                                    <div className="bg-gray-200 p-2 sm:p-4 rounded-xl w-full max-w-[220mm] h-[90vh] flex flex-col relative shadow-2xl">
+                                        <div className="flex justify-between items-center mb-3 bg-white p-3 rounded-lg shadow-sm">
+                                            <h3 className="font-black text-lg text-gray-800 uppercase flex items-center gap-2"><Icon name="tag" /> Vista Previa Nativa PDF</h3>
+                                            <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-red-600 text-white p-2 rounded-lg font-bold">X</button>
+                                        </div>
+                                        <div className="flex-1 w-full bg-slate-300 rounded-b-lg overflow-hidden relative flex justify-center items-center shadow-inner border border-gray-400">
+                                            {previewPdfUrl ? (
+                                                <iframe src={previewPdfUrl} className="w-full h-full border-none" title="Preview"></iframe>
+                                            ) : (
+                                                <div className="animate-pulse font-bold text-slate-500 text-lg">Procesando vectores PDF...</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="preview-capture-root" style={{ position: 'fixed', top: '0', left: '0', zIndex: '-9999', width: '794px', minWidth: '794px' }}>
+                                    <div className="bg-white" style={{ width: '794px', height: '1123px' }}>
+                                        <BobinaLabel row={previewRow} empresa={empresa} formatDateDisplay={formatDateDisplay} />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* RE-ETIQUETAR MODAL */}
+                        <div className={`fixed inset-0 bg-black/80 z-50 flex-col justify-center items-center p-4 no-print ${isRelabelScanning ? 'flex' : 'hidden'}`}>
+                            <div className="bg-white p-4 rounded-xl w-full max-w-md text-center shadow-2xl">
+                                <h3 className="font-black text-lg mb-2">Re-etiquetar (Escáner)</h3>
+                                <p className="text-sm text-gray-500 mb-4">Apunta la cámara al código original.</p>
+                                <div id="reader-relabel" className="w-full"></div>
+                                <button onClick={closeRelabelScanner} className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg font-bold w-full shadow-lg">Cerrar</button>
+                            </div>
+                        </div>
+
+                        {/* CONTROLES TOP */}
+                        <div className="max-w-[297mm] mx-auto mb-6 flex flex-wrap gap-4 items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
+                            <div className="flex gap-2 flex-wrap items-center w-full sm:w-auto">
+                                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
+                                
+                                <div className="flex flex-col text-sm border-r border-slate-200 pr-5 mr-3">
+                                    <span className="font-black text-slate-800">Cargar Archivos</span>
+                                    <span className="text-slate-400 text-xs">Opcional</span>
+                                </div>
+
+                                <button onClick={() => document.getElementById('json-upload').click()} className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 text-sm shadow-sm">
+                                    <Icon name="folder" /> Abrir Sesión .json
+                                </button>
+                                
+                                <button onClick={() => setIsRelabelScanning(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 text-sm shadow-md">
+                                    <Icon name="camera" /> Copiar Rótulo Roto
+                                </button>
+                                
+                                {isAutoLoadingDB && <span className="text-xs font-bold text-amber-500 animate-pulse ml-2">Cargando Insumos Excel...</span>}
+                                {insumosDB.length === 0 && !isAutoLoadingDB && (
+                                    <div className="flex gap-2">
+                                        <input type="file" id="excel-upload" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+                                        <button onClick={() => document.getElementById('excel-upload').click()} className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded">
+                                            Falló Carga Excel / Cargar Manual
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 flex-wrap w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-0 border-slate-200">
+                                <button onClick={exportarProyecto} className="bg-white border-2 border-slate-300 text-slate-800 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 text-sm shadow-sm">
+                                    <Icon name="save" /> Guardar Avance
+                                </button>
+                                <button onClick={() => { if (window.confirm("¿Seguro de descartar tu progreso y limpiar memoria?")) { localStorage.removeItem('molderilRows'); window.location.reload(); } }} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 text-sm">
+                                    <Icon name="trash" /> Borrar Caché
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ESTRUCTURA PLANILLA DE CARGA */}
+                        <div className="max-w-[297mm] mx-auto bg-white p-[8mm] shadow-lg border border-slate-200 rounded-lg no-print">
+                            {/* TABLA PRINCIPAL - igual a version previa */}
+                            <div className="w-full pb-3 overflow-x-auto shadow-inner border border-slate-300">
+                                <table className="w-full border-collapse border-slate-300 text-[10px] min-w-max">
+                                    <thead>
+                                        <tr className="bg-slate-800 text-white">
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[70px]">FECHA</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[130px]">PROVEEDOR</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[90px]">TIPO PAPEL</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[70px]">GRAMAJE</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[60px]">ANCHO</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[80px]">SKU</th>
+                                            <th className="border border-slate-700 p-2 text-center th-resize min-w-[60px]">CORTE</th>
+                                            <th className="border border-blue-600 p-2 text-center bg-blue-600 text-white font-black th-resize min-w-[60px]">KILOS</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[80px]">L.MADRE</th>
+                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[80px]">L.HIJA</th>
+                                            <th className="border border-slate-700 p-2 text-center min-w-[60px]">ACCIONES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rows.map(row => (
+                                            <tr key={row.id} className="border-b border-slate-200 hover:bg-slate-50">
+                                                <td className="border-r border-slate-300 p-0"><input type="date" className="w-full p-2 border-none outline-none text-[10px] bg-transparent" value={row.fecha} onChange={e => updateRow(row.id, 'fecha', e.target.value)} /></td>
+                                                {['proveedor', 'tipo', 'gramaje', 'ancho', 'sku'].map(field => (
+                                                    <td key={field} className="border-r border-slate-300 p-0 relative">
+                                                        <input
+                                                            className={`w-full p-2 border-none outline-none bg-transparent ${field === 'sku' ? 'text-[9px] font-black text-blue-900' : 'text-[10px]'} uppercase`}
+                                                            value={row[field]}
+                                                            onChange={e => updateRow(row.id, field, e.target.value)}
+                                                            onFocus={() => setActiveDropdown({ id: row.id, field: field })}
+                                                            onBlur={() => setTimeout(() => setActiveDropdown(null), 250)}
+                                                            placeholder={field === 'proveedor' ? "Escribir..." : ""}
+                                                        />
+                                                        {activeDropdown?.id === row.id && activeDropdown?.field === field && (
+                                                            <div className="absolute z-[999] left-0 top-full mt-1 w-[250px] bg-white border border-slate-400 shadow-2xl max-h-[300px] overflow-y-auto no-print">
+                                                                {insumosDB.filter(item => {
+                                                                    const norm = (str) => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                                                                    let match = true;
+                                                                    if (row[field]) match = match && norm(item[field]).includes(norm(row[field]));
+                                                                    if (field !== 'proveedor' && row.proveedor) match = match && norm(item.proveedor).includes(norm(row.proveedor));
+                                                                    if (field !== 'proveedor' && field !== 'tipo' && row.tipo) match = match && norm(item.tipo).includes(norm(row.tipo));
+                                                                    return match;
+                                                                }).filter((item, idx, self) => idx === self.findIndex(t => t[field] === item[field]))
+                                                                .map((item, idx) => (
+                                                                    <div key={idx} className="p-2 hover:bg-blue-100 cursor-pointer border-b border-slate-100" onClick={() => {
+                                                                        if (field === 'proveedor') { updateRow(row.id, 'proveedor', item.proveedor); } else {
+                                                                            updateRow(row.id, 'proveedor', item.proveedor); updateRow(row.id, 'tipo', item.tipo);
+                                                                            updateRow(row.id, 'gramaje', item.gramaje); updateRow(row.id, 'ancho', item.ancho); updateRow(row.id, 'sku', item.sku);
+                                                                        }
+                                                                        setActiveDropdown(null);
+                                                                    }}>
+                                                                        <div className="flex justify-between items-start mb-1"><span className="font-black text-blue-900 text-[11px] uppercase truncate">{item[field]}</span></div>
+                                                                        {field !== 'proveedor' && (
+                                                                            <div className="text-slate-700 text-[9px] leading-tight flex gap-2 uppercase">
+                                                                                {field !== 'sku' && <span>SKU: <b>{item.sku}</b></span>}
+                                                                                {field !== 'tipo' && <span className="truncate max-w-[150px]">TIPO: <b>{item.tipo}</b></span>}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                ))}
+                                                <td className="border-r border-slate-300 p-0"><input className="w-full p-2 border-none outline-none text-center font-bold text-[10px] bg-transparent" value={row.corte} onChange={e => updateRow(row.id, 'corte', e.target.value)} /></td>
+                                                <td className="border-r border-slate-300 p-0 bg-blue-50/50"><input className="w-full p-2.5 border-none outline-none text-center font-black text-blue-900 text-[11px] bg-transparent" placeholder="KILOS..." value={row.kg} onChange={e => updateRow(row.id, 'kg', e.target.value)} /></td>
+                                                <td className="border-r border-slate-300 p-0"><input className="w-full p-2 border-none outline-none font-mono text-[9px] uppercase bg-transparent" value={row.loteMadre} onChange={e => updateRow(row.id, 'loteMadre', e.target.value)} /></td>
+                                                <td className="border-r border-slate-300 p-0"><input className="w-full p-2 border-none outline-none font-mono text-[9px] uppercase bg-transparent" value={row.loteHija} onChange={e => updateRow(row.id, 'loteHija', e.target.value)} /></td>
+                                                <td className="p-1 text-center justify-center items-center h-full no-print bg-slate-100 flex gap-2 border-l border-slate-300">
+                                                    <button onClick={() => handlePreview(row)} className="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-100 p-1.5 rounded" title="Preview"><Icon name="tag" size={14} /></button>
+                                                    <button onClick={() => removeRow(row.id)} className="text-red-500 hover:text-white hover:bg-red-500 bg-red-100 p-1.5 rounded" title="Borrar"><Icon name="trash" size={14} /></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="mt-6 flex flex-wrap justify-between items-center bg-slate-50 p-4 border border-slate-200 rounded-xl">
+                                <div className="flex gap-2">
+                                    <button onClick={addRow} className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-900 shadow active:scale-95"><Icon name="plus" /> Añadir Nueva Fila</button>
+                                    <button onClick={sortBobinas} className="bg-white border-2 border-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 shadow-sm active:scale-95"><Icon name="sort" /> Agrupar</button>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-sm font-bold text-slate-500 uppercase mr-3">TOTAL CARGADOS:</span>
+                                    <span className="text-3xl font-black text-blue-700 tracking-tighter">{totalKg.toLocaleString('es-AR')} <span className="text-xl">KG</span></span>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 pt-8 border-t-2 border-slate-200 flex justify-end">
+                                <button onClick={() => setShowCloseModal(true)} className="bg-emerald-600 text-white px-8 py-5 rounded-xl font-black flex items-center gap-3 hover:bg-emerald-700 shadow-xl transition-all active:scale-95 text-xl">
+                                    <Icon name="printer" size={28} /> PROCESAR Y DESCARGAR PDFs
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* RENDER NATIVO PDF OCULTO */}
+                        <div id="labels-print-container" className="hidden">
+                            {rows.filter(r => r.proveedor || r.kg).map(row => (
+                                <BobinaLabel key={`print-${row.id}`} row={row} empresa={empresa} formatDateDisplay={formatDateDisplay} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

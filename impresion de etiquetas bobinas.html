@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molderil S.A. - Control y Logística</title>
+
+    <!-- Librerías -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Estilos de Impresión Nativos */
+        @media print {
+            body {
+                background: white !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+            }
+
+            .page-break {
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+
+            .print-area {
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+        }
+
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
+
+        /* Ajustes UI */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        #reader-salidas button,
+        #reader-relabel button {
+            background-color: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+        }
+
+        #reader-salidas select,
+        #reader-relabel select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .tab-active {
+            border-bottom: 4px solid #2563eb;
+            color: #1e3a8a;
+        }
+
+        .tab-inactive {
+            border-bottom: 4px solid transparent;
+            color: #6b7280;
+        }
+
+        /* Clases para permitir redimensionar columnas */
+        .th-resize {
+            resize: horizontal;
+            overflow: auto;
+            position: relative;
+            background-clip: padding-box;
+        }
+
+        .th-resize::-webkit-scrollbar {
+            height: 0px;
+            width: 0px;
+        }
+
+        .th-resize:hover::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(135deg, transparent 50%, #94a3b8 50%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
+
+        // Generador de IDs Únicos Internos para las filas de React
+        const generateId = () => Date.now() + Math.random();
+
+        // Generador de UID (Universal Unique Identifier) para la Bobina: YYMMDD-HHMMSS-MMM
+        const generateUID = () => {
+            const now = new Date();
+            const yy = String(now.getFullYear()).slice(-2);
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const ms = String(now.getMilliseconds()).padStart(3, '0');
+            const rnd = Math.floor(Math.random() * 100).toString().padStart(2, '0'); // Aleatorio extra
+            return `${dd}${mm}${yy}-${hh}${min}${ss}-${ms}${rnd}`;
+        };
+
+        const Icon = ({ name, size = 18 }) => {
+            const paths = {
+                plus: "M12 5v14M5 12h14",
+                trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+                printer: "M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z",
+                tag: "M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01",
+                upload: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12",
+                camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M9 13a3 3 0 1 0 6 0 3 3 0 0 0-6 0z",
+                filePdf: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+                close: "M18 6L6 18 M6 6l12 12",
+                save: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8",
+                folder: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z",
+                edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
+                box: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12",
+                sort: "M4 6h16M4 12h10M4 18h4",
+                check: "M20 6L9 17l-5-5"
+            };
+            return (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={paths[name]} />
+                </svg>
+            );
+        };
+
+        // Componente nativo de QR para evitar bloqueos CORS en archivos locales (file://)
+        const QRCodeCanvas = ({ text, size = 140 }) => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                if (!canvasRef.current || !window.QRCode) return;
+                canvasRef.current.innerHTML = ''; // Limpiar previo
+                new window.QRCode(canvasRef.current, {
+                    text: text,
+                    width: size,
+                    height: size,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : window.QRCode.CorrectLevel.M
+                });
+            }, [text, size]);
+            return <div ref={canvasRef} style={{ width: size, height: size }} title="QR Code Seguro" />;
+        };
+
+        // COMPONENTE DE ETIQUETA RÍGIDO Y ANTI-DESBORDE
+        const BobinaLabel = ({ row, empresa, formatDateDisplay }) => {
+            // El UID se incrusta en el payload para garantizar unicidad al 100%. AHORA INCLUYE 'TIPO'.
+            const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.MADRE: ${row.loteMadre} | L.HIJA: ${row.loteHija} | CORTE: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
+
+            return (
+                <div className="label-page bg-white box-border print:shadow-none shadow-xl mb-4 overflow-hidden" style={{ width: '794px', minWidth: '794px', height: '1123px', minHeight: '1123px', padding: '38px', margin: '0 auto', pageBreakAfter: 'always', breakAfter: 'page' }}>
+                    <div className="w-full h-full border-[6px] border-double border-black flex flex-col justify-between p-[30px] box-border relative">
+
+                        <div className="text-center border-b-8 border-black pb-4 shrink-0">
+                            <h1 className="font-black mb-1 tracking-tighter" style={{ fontSize: '3.5rem', lineHeight: '1' }}>{empresa}</h1>
+                            <p className="text-[20px] font-bold tracking-[0.4em] text-gray-500 uppercase">IDENTIFICACIÓN DE BOBINA</p>
+                        </div>
+
+                        <div className="flex-grow py-4 flex flex-col justify-between overflow-hidden">
+                            {/* Cabecera Datos y QR - Flexbox para evitar solapamientos */}
+                            <div className="flex justify-between items-stretch gap-4">
+                                <div className="flex-1 flex flex-col justify-between py-1 gap-2">
+                                    <div className="border-l-8 border-black pl-4 shrink-0">
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Proveedor</p>
+                                        <p className="text-[36px] font-black uppercase leading-none truncate mt-1">{row.proveedor || 'S/D'}</p>
+                                    </div>
+                                    <div className="border-l-8 border-blue-600 pl-4 shrink-0">
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">SKU / Artículo</p>
+                                        <p className="text-[30px] font-black uppercase text-blue-800 leading-none truncate mt-1">{row.sku || 'S/D'}</p>
+                                    </div>
+                                    <div className="border-l-8 border-black pl-4 pr-2 overflow-hidden h-full flex flex-col justify-start">
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tipo de Papel</p>
+                                        <p className="text-[24px] font-bold uppercase leading-tight break-words">{row.tipo || 'S/D'}</p>
+                                    </div>
+                                </div>
+                                <div className="w-[180px] shrink-0 flex flex-col items-center justify-center p-3 border-4 border-dashed border-gray-200 bg-gray-50 rounded-xl">
+                                    <QRCodeCanvas text={qrData} size={140} />
+                                    {/* MUESTRA EL ID UNICO DE LA BOBINA */}
+                                    <p className="text-[10px] font-mono mt-2 text-gray-800 font-bold uppercase tracking-widest text-center w-full">ID: {row.uid}</p>
+                                </div>
+                            </div>
+
+                            {/* Contenedor central (Peso y Corte) */}
+                            <div className={`grid ${row.corte ? 'grid-cols-2' : 'grid-cols-1'} gap-4 my-6`}>
+                                {row.corte && (
+                                    <div className="bg-black text-white p-6 flex flex-col items-center justify-center text-center rounded-sm">
+                                        <p className="text-[18px] font-bold uppercase opacity-70 mb-1 tracking-widest">Corte B. Hija</p>
+                                        <div className="flex items-baseline justify-center">
+                                            <p className="text-[72px] font-black leading-none">{row.corte}</p>
+                                            <span className="text-[20px] ml-1 uppercase font-bold">mm</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="border-8 border-black p-6 flex flex-col items-center justify-center text-center rounded-sm">
+                                    <p className="text-[18px] font-bold uppercase text-gray-500 mb-1 tracking-widest">Peso Neto</p>
+                                    <div className="flex items-baseline justify-center text-blue-900">
+                                        <p className="text-[96px] font-black leading-none">{row.kg || '0'}</p>
+                                        <span className="text-[24px] ml-2 uppercase font-bold">kg</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Detalles Inferiores */}
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-gray-800 border-t-4 border-gray-200 pt-6 mt-2">
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Gramaje</p>
+                                    <p className="text-[36px] font-black">{row.gramaje || '---'} <span className="text-[18px] text-gray-400 font-bold uppercase">gr/m²</span></p>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Ancho Orig.</p>
+                                    <p className="text-[36px] font-black">{row.ancho || '---'} <span className="text-[18px] text-gray-400 font-bold uppercase">mm</span></p>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Lote Madre</p>
+                                    <p className="text-[24px] font-mono font-bold break-all leading-none">{row.loteMadre || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Lote Hija</p>
+                                    <p className="text-[24px] font-mono font-bold break-all leading-none">{row.loteHija || 'N/A'}</p>
+                                </div>
+                            </div>
+
+                            {row.obs && (
+                                <div className="bg-gray-100 p-4 mt-6 rounded shrink-0">
+                                    <p className="text-[10px] font-bold uppercase text-gray-500 tracking-widest mb-1">Observaciones</p>
+                                    <p className="text-[16px] font-bold text-gray-700 leading-snug truncate">{row.obs}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t-4 border-black pt-4 flex justify-between items-end mt-4 shrink-0">
+                            <div>
+                                <p className="text-[14px] font-bold uppercase text-gray-500">Fecha de Registro</p>
+                                <p className="text-[24px] font-black">{formatDateDisplay(row.fecha)}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] text-gray-400 font-mono tracking-widest uppercase">Molderil S.A. Control Interno</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PrintableSummary = ({ validRows, subtotalesPorSKU, totalKg, empresa, today, formatDateDisplay }) => {
+            // El resumen ahora se renderiza 100% nativo mediante jsPDF para mejor calidad y compatibilidad.
+            return null;
+        };
+
+        const App = () => {
+            const today = new Date().toISOString().split('T')[0];
+            const empresa = "MOLDERIL S.A.";
+
+            const [appMode, setAppMode] = useState('rotulos');
+            const [showCloseModal, setShowCloseModal] = useState(false);
+            const [isProcessing, setIsProcessing] = useState(false);
+
+            // Funciones de audio para feedback de escaneo
+            const playSuccessSound = () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start(); osc.stop(ctx.currentTime + 0.1);
+            };
+
+            const playErrorSound = () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start(); osc.stop(ctx.currentTime + 0.3);
+            };
+
+            // Inicialización con persistencia en localStorage
+            const [rows, setRows] = useState(() => {
+                const saved = localStorage.getItem('molderilRows');
+                if (saved) {
+                    try { 
+                        const parsed = JSON.parse(saved); 
+                        if (Array.isArray(parsed)) return parsed;
+                    } catch (e) { console.error("Error al cargar localStorage rows", e); }
+                }
+                return [{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }];
+            });
+
+            // Modificado: activeDropdown ahora almacena qué celda está activa: { id: row_id, field: 'nombre_columna' }
+            const [activeDropdown, setActiveDropdown] = useState(null);
+            const [isRelabelScanning, setIsRelabelScanning] = useState(false);
+            const [previewRow, setPreviewRow] = useState(null);
+            const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
+
+            const [insumosDB, setInsumosDB] = useState([
+                { proveedor: "CELULOSA ARGENTINA", tipo: "KRAFT LINER", gramaje: "120", ancho: "1600", sku: "ART-CA120" },
+                { proveedor: "LEDESMA", tipo: "OBRA", gramaje: "75", ancho: "1200", sku: "ART-LED075" }
+            ]);
+
+            const [isOutputScanning, setIsOutputScanning] = useState(false);
+            const [scannedItems, setScannedItems] = useState(() => {
+                const saved = localStorage.getItem('molderilScanned');
+                if (saved) {
+                    try { 
+                        const parsed = JSON.parse(saved); 
+                        if (Array.isArray(parsed)) return parsed;
+                    } catch (e) { console.error("Error al cargar localStorage scanned", e); }
+                }
+                return [];
+            });
+
+            const scannerRefOutput = useRef(null);
+            const scannerRefRelabel = useRef(null);
+
+            // Ref para debounce (anti-duplicados por lecturas múltiples de la cámara en 1 segundo)
+            const lastRelabelScannedTime = useRef(0);
+
+            const formatDateDisplay = (dateStr) => {
+                if (!dateStr) return '--/--/----';
+                const [year, month, day] = dateStr.split('-');
+                return `${day}/${month}/${year}`;
+            };
+            const unformatDateDisplay = (displayStr) => {
+                if (!displayStr || displayStr.includes('--')) return today;
+                const [day, month, year] = displayStr.split('/');
+                return `${year}-${month}-${day}`;
+            };
+
+            // Auto-guardado en localStorage cada vez que cambian datos
+            useEffect(() => {
+                localStorage.setItem('molderilRows', JSON.stringify(rows));
+            }, [rows]);
+
+            useEffect(() => {
+                localStorage.setItem('molderilScanned', JSON.stringify(scannedItems));
+            }, [scannedItems]);
+
+            // Parseo seguro blindado ante datos corruptos
+            const totalKg = useMemo(() => (Array.isArray(rows) ? rows : []).reduce((acc, r) => acc + (parseFloat(String((r && r.kg) || '').replace(',', '.')) || 0), 0), [rows]);
+
+            const subtotalesPorSKU = useMemo(() => {
+                const map = {};
+                (Array.isArray(rows) ? rows : []).forEach(r => {
+                    if (!r || !r.kg) return;
+                    const key = r.sku || 'Sin SKU';
+                    if (!map[key]) {
+                        map[key] = { sku: key, proveedor: r.proveedor, tipo: r.tipo, count: 0, kg: 0 };
+                    }
+                    map[key].count += 1;
+                    map[key].kg += (parseFloat(String(r.kg || '').replace(',', '.')) || 0);
+                });
+                return Object.values(map).sort((a, b) => a.sku.localeCompare(b.sku));
+            }, [rows]);
+
+            const updateRow = (id, field, value) => {
+                const upperValue = (typeof value === 'string' && field !== 'fecha') ? value.toUpperCase() : value;
+                setRows(prevRows => prevRows.map(r => r.id === id ? { ...r, [field]: upperValue } : r));
+            };
+
+            const addRow = () => setRows([...rows, { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]);
+            const removeRow = (id) => { 
+                if (rows.length > 1) {
+                    setRows(rows.filter(r => r.id !== id));
+                } else {
+                    setRows([{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]);
+                }
+            };
+
+            const sortBobinas = () => {
+                const sorted = [...rows].sort((a, b) => {
+                    const skuA = (a.sku || '').toLowerCase();
+                    const skuB = (b.sku || '').toLowerCase();
+                    if (skuA < skuB) return -1;
+                    if (skuA > skuB) return 1;
+                    const loteA = (a.loteHija || '').toLowerCase();
+                    const loteB = (b.loteHija || '').toLowerCase();
+                    if (loteA < loteB) return -1;
+                    if (loteA > loteB) return 1;
+                    return 0;
+                });
+                setRows(sorted);
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const dataBytes = new Uint8Array(evt.target.result);
+                        const wb = XLSX.read(dataBytes, { type: 'array' });
+                        // Usamos defval: '' para evitar celdas cortadas si las columnas finales en Excel están en blanco
+                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        const parsed = [];
+                        for (let i = 1; i < data.length; i++) {
+                            const rowData = data[i];
+                            // Detectar que la fila contenga algo de texto real para omitir filas fantasma
+                            if (Array.isArray(rowData) && rowData.join("").trim() !== "") {
+                                parsed.push({
+                                    proveedor: String(rowData[0] || '').trim().toUpperCase(),
+                                    sku: String(rowData[1] || '').trim().toUpperCase(),
+                                    tipo: String(rowData[2] || '').trim().toUpperCase(),
+                                    gramaje: String(rowData[3] || '').trim().toUpperCase(),
+                                    ancho: String(rowData[4] || '').trim().toUpperCase()
+                                });
+                            }
+                        }
+                        if (parsed.length > 0) { setInsumosDB(parsed); alert(`Se cargaron ${parsed.length} insumos.`); }
+                    } catch (error) { alert("Error al leer el Excel. Verifica que tenga 5 columnas (Prov, SKU, Tipo, Gramaje, Ancho)."); }
+                    e.target.value = null;
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            const exportarProyecto = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rows));
+                const a = document.createElement('a');
+                a.setAttribute("href", dataStr);
+                a.setAttribute("download", `Proyecto_Molderil_${formatDateDisplay(today).replace(/\//g, '-')}.json`);
+                document.body.appendChild(a);
+                a.click(); a.remove();
+            };
+
+            const importarProyecto = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const imported = JSON.parse(evt.target.result);
+                        // Asegurar que las filas importadas tengan UID si venían de una versión anterior
+                        const sanitized = imported.map(r => ({ ...r, uid: r.uid || generateUID() }));
+                        if (Array.isArray(sanitized)) { setRows(sanitized); alert("Lista cargada exitosamente."); }
+                    } catch (error) { alert("Archivo inválido."); }
+                    e.target.value = null;
+                };
+                reader.readAsText(file);
+            };
+
+            // =========================================================================================
+            // CIERRE Y GENERACIÓN DE PDFs
+            // =========================================================================================
+            const generarResumenPDF = () => {
+                const validRows = rows.filter(r => r.proveedor || r.kg);
+                const doc = new window.jspdf.jsPDF('landscape');
+                doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text(empresa, 14, 20);
+                doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.text("Resumen de Ingresos / Rótulos", 14, 28);
+                doc.setFontSize(10); doc.text(`Fecha: ${formatDateDisplay(today)}`, 14, 34);
+                doc.text(`Total Bobinas: ${validRows.length} | Kilos Totales: ${totalKg.toLocaleString('es-AR')} kg`, 14, 39);
+
+                doc.autoTable({
+                    startY: 45,
+                    head: [['Fecha', 'Proveedor', 'Tipo', 'SKU', 'Gramaje', 'Ancho', 'Corte', 'Kg', 'L.Madre', 'L.Hija']],
+                    body: validRows.map(r => [formatDateDisplay(r.fecha), r.proveedor, r.tipo, r.sku, r.gramaje, r.ancho, r.corte, `${r.kg}`, r.loteMadre, r.loteHija]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [55, 65, 81] }
+                });
+
+                if (subtotalesPorSKU.length > 0) {
+                    doc.autoTable({
+                        startY: doc.lastAutoTable.finalY + 15,
+                        head: [['SKU / Artículo', 'Proveedor - Tipo', 'Cant. Bobinas', 'Kg Totales']],
+                        body: subtotalesPorSKU.map(s => [s.sku, `${s.proveedor} (${s.tipo})`, s.count, `${s.kg.toLocaleString('es-AR')} kg`]),
+                        theme: 'striped',
+                        headStyles: { fillColor: [37, 99, 235] }
+                    });
+                }
+                doc.save(`Resumen_Rotulos_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
+            };
+
+            const procesarCierreLista = () => {
+                const validRows = rows.filter(r => r.proveedor || r.kg);
+                if (validRows.length === 0) {
+                    alert("La planilla está vacía. Carga al menos una bobina.");
+                    setShowCloseModal(false);
+                    return;
+                }
+
+                // Validación estricta previa impresión (Evitar rótulos erróneos)
+                const invalidRows = validRows.filter(r => !r.proveedor || !r.kg || !r.tipo);
+                if (invalidRows.length > 0) {
+                    alert(`Hay ${invalidRows.length} fila(s) incompleta(s). El Proveedor, Tipo y Kg son obligatorios para generar rótulos correctos.\nPor favor, revísalos e inténtalo de nuevo.`);
+                    setShowCloseModal(false);
+                    return;
+                }
+
+                // 1. Ocultamos el modal
+                setShowCloseModal(false);
+
+                // 2. Timeout para que se cierre visualmente el modal
+                setTimeout(async () => {
+                    try {
+                        // Preparamos el contenedor principal unificado (Resumen + Rótulos HTML)
+                        const labelsContainer = document.getElementById('labels-print-container');
+                        labelsContainer.classList.remove('hidden');
+                        labelsContainer.style.display = 'block';
+                        labelsContainer.style.position = 'fixed'; // FIXED previene fallos de canvas por scroll
+                        labelsContainer.style.top = '0px';
+                        labelsContainer.style.left = '0px';
+                        labelsContainer.style.zIndex = '-9999';
+                        labelsContainer.style.width = '210mm';
+
+                        // Esperamos a que el renderizado de QR Canvas y Tailwind se complete nativamente
+                        await new Promise(resolve => setTimeout(resolve, 800));
+
+                        // 1. Crear documento PDF principal en A4 vertical
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        
+                        // 2. Dibujar Resumen Profesional nativo (Evita estilo de captura de página)
+                        doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text(empresa, 14, 20);
+                        doc.setFontSize(14); doc.setFont("helvetica", "normal"); doc.text("REPORTE OFICIAL DE BOBINAS", 14, 28);
+                        doc.setFontSize(10); doc.text(`Generado: ${formatDateDisplay(today)}`, 14, 34);
+                        doc.text(`Total Bobinas: ${validRows.length} | Kilos Totales: ${totalKg.toLocaleString('es-AR')} kg`, 14, 39);
+
+                        // Tabla detallada por bobina
+                        doc.autoTable({
+                            startY: 45,
+                            head: [['Proveedor', 'Tipo', 'SKU', 'Gramaje', 'Ancho', 'Corte', 'L.Hija', 'Kg']],
+                            body: validRows.map(r => [r.proveedor, r.tipo, r.sku, r.gramaje, r.ancho, r.corte || '-', r.loteHija || '-', `${r.kg}`]),
+                            theme: 'grid',
+                            headStyles: { fillColor: [55, 65, 81] },
+                            styles: { fontSize: 8 },
+                        });
+
+                        // Cuadros individuales de subtotales por kilo (etiquetas de resumen)
+                        if (subtotalesPorSKU.length > 0) {
+                            let endY = doc.lastAutoTable.finalY + 15;
+                            // Prevenir desbordamiento de página con el título
+                            if (endY + 30 > 280) { doc.addPage(); endY = 20; }
+
+                            doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("RESUMEN GLOBAL - KILOS POR PAPEL", 14, endY);
+                            endY += 8;
+                            
+                            let x = 14;
+                            let y = endY;
+                            const rectWidth = 87; // Dos columnas por fila
+                            const rectHeight = 25;
+                            const padding = 4;
+                            
+                            subtotalesPorSKU.forEach((sub, i) => {
+                                if (x + rectWidth > 200) { x = 14; y += rectHeight + 5; }
+                                if (y + rectHeight > 280) { doc.addPage(); x = 14; y = 20; }
+                                
+                                doc.setDrawColor(200, 200, 200);
+                                doc.setFillColor(245, 248, 255);
+                                doc.roundedRect(x, y, rectWidth, rectHeight, 2, 2, 'FD');
+                                
+                                doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+                                doc.text(sub.sku.toUpperCase(), x + padding, y + padding + 4);
+                                doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+                                doc.text(`${sub.proveedor} | ${sub.tipo}`, x + padding, y + padding + 8);
+                                
+                                doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
+                                doc.text(`${sub.kg.toLocaleString('es-AR')} kg`, x + padding, y + padding + 15);
+                                
+                                doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+                                doc.text(`${sub.count} bobinas`, x + rectWidth - padding - 22, y + padding + 15);
+                                
+                                doc.setTextColor(0, 0, 0); // Reset color
+                                x += rectWidth + 5;
+                            });
+                        }
+
+                        // 3. Iterar cada rótulo visual secuencialmente y sumarlo al PDF
+                        const labelNodes = Array.from(labelsContainer.querySelectorAll('.label-page'));
+                        for (let i = 0; i < labelNodes.length; i++) {
+                            const node = labelNodes[i];
+                            // Añadir hoja para alojar la etiqueta individual
+                            doc.addPage('a4', 'portrait');
+                            
+                            const canvas = await window.html2canvas(node, {
+                                scale: 2, 
+                                useCORS: true, 
+                                letterRendering: true, 
+                                windowWidth: 794,
+                                scrollY: 0, 
+                                scrollX: 0
+                            });
+                            
+                            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                            // Las dimensiones 210x297 aseguran que ocupe todo el espacio A4 perfecto
+                            doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        }
+
+                        // 4. Guardar archivo final
+                        doc.save(`Impresion_Completa_Molderil_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
+
+                        // Restaurar DOM
+                        labelsContainer.style.display = '';
+                        labelsContainer.style.position = '';
+                        labelsContainer.style.top = '';
+                        labelsContainer.style.left = '';
+                        labelsContainer.style.zIndex = '';
+                        labelsContainer.style.width = '';
+                        labelsContainer.classList.add('hidden');
+                        
+                    } catch (err) {
+                        console.error("Error al generar PDF unificado: ", err);
+                        alert("Hubo un error al generar el PDF unificado. Revisa la consola.");
+                    }
+                }, 100);
+            };
+
+            // =========================================================================================
+            // MANEJO SEGURO DE SCANNERS (Previene Crasheos)
+            // =========================================================================================
+            const closeRelabelScanner = () => {
+                if (scannerRefRelabel.current) {
+                    scannerRefRelabel.current.clear().then(() => {
+                        scannerRefRelabel.current = null;
+                        setIsRelabelScanning(false);
+                    }).catch((e) => {
+                        console.error("Error al limpiar cámara:", e);
+                        scannerRefRelabel.current = null;
+                        setIsRelabelScanning(false);
+                    });
+                } else {
+                    setIsRelabelScanning(false);
+                }
+            };
+
+            useEffect(() => {
+                if (isRelabelScanning) {
+                    scannerRefRelabel.current = new Html5QrcodeScanner("reader-relabel", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+                    scannerRefRelabel.current.render(
+                        (decodedText) => {
+                            // DEBOUNCE: Ignorar múltiples lecturas rápidas accidentales en menos de 2 segundos
+                            if (Date.now() - lastRelabelScannedTime.current < 2000) return;
+                            lastRelabelScannedTime.current = Date.now();
+
+                            if (decodedText.startsWith("MOLDERIL SA")) {
+                                const parts = decodedText.split(" | ");
+                                // Le asignamos un UID nuevo a la bobina re-etiquetada para trazarla correctamente
+                                let newRow = { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: 'Re-etiquetado' };
+                                parts.forEach(p => {
+                                    if (p.startsWith("PROV: ")) newRow.proveedor = p.replace("PROV: ", "");
+                                    if (p.startsWith("TIPO: ")) newRow.tipo = p.replace("TIPO: ", "");
+                                    if (p.startsWith("KG: ")) newRow.kg = p.replace("KG: ", "");
+                                    if (p.startsWith("L.MADRE: ")) newRow.loteMadre = p.replace("L.MADRE: ", "");
+                                    if (p.startsWith("L.HIJA: ")) newRow.loteHija = p.replace("L.HIJA: ", "");
+                                    if (p.startsWith("CORTE: ")) newRow.corte = p.replace("CORTE: ", "");
+                                    if (p.startsWith("SKU: ")) newRow.sku = p.replace("SKU: ", "");
+                                    if (p.startsWith("GRAMAJE: ")) newRow.gramaje = p.replace("GRAMAJE: ", "");
+                                    if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
+                                    if (p.startsWith("FECHA: ")) newRow.fecha = unformatDateDisplay(p.replace("FECHA: ", ""));
+                                });
+
+                                setRows(prev => [...prev, newRow]);
+                                playSuccessSound(); // Feedback auditivo
+                                if (navigator.vibrate) navigator.vibrate(200);
+
+                                // Cierra la cámara de forma segura
+                                closeRelabelScanner();
+                            }
+                        }, () => { }
+                    );
+                }
+            }, [isRelabelScanning]);
+
+            const closeOutputScanner = () => {
+                if (scannerRefOutput.current) {
+                    scannerRefOutput.current.clear().then(() => {
+                        scannerRefOutput.current = null;
+                        setIsOutputScanning(false);
+                    }).catch((err) => {
+                        console.error("Error al limpiar cámara:", err);
+                        scannerRefOutput.current = null;
+                        setIsOutputScanning(false);
+                    });
+                } else {
+                    setIsOutputScanning(false);
+                }
+            };
+
+            useEffect(() => {
+                if (appMode === 'salidas' && isOutputScanning) {
+                    scannerRefOutput.current = new Html5QrcodeScanner("reader-salidas", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+                    scannerRefOutput.current.render(
+                        (decodedText) => {
+                            if (decodedText.startsWith("MOLDERIL SA")) {
+                                const parts = decodedText.split(" | ");
+                                const data = { raw: decodedText, uid: "S/D", proveedor: "S/D", tipo: "S/D", kg: "0", loteMadre: "S/D", loteHija: "S/D", sku: "S/D" };
+                                parts.forEach(p => {
+                                    if (p.startsWith("UID: ")) data.uid = p.replace("UID: ", "");
+                                    if (p.startsWith("PROV: ")) data.proveedor = p.replace("PROV: ", "");
+                                    if (p.startsWith("TIPO: ")) data.tipo = p.replace("TIPO: ", "");
+                                    if (p.startsWith("KG: ")) data.kg = p.replace("KG: ", "");
+                                    if (p.startsWith("L.MADRE: ")) data.loteMadre = p.replace("L.MADRE: ", "");
+                                    if (p.startsWith("L.HIJA: ")) data.loteHija = p.replace("L.HIJA: ", "");
+                                    if (p.startsWith("SKU: ")) data.sku = p.replace("SKU: ", "");
+                                });
+                                setScannedItems(prev => {
+                                    // Verificación infalible: Si la cadena raw completa coincide, es la MISMA bobina ya escaneada
+                                    if (prev.some(item => item.raw === decodedText)) {
+                                        playErrorSound(); // Feedback de error - Ya escaneado
+                                        return prev;
+                                    }
+                                    playSuccessSound(); // Feedback auditivo éxito
+                                    if (navigator.vibrate) navigator.vibrate(200);
+                                    return [...prev, data];
+                                });
+                            }
+                        }, () => { }
+                    );
+                }
+            }, [appMode, isOutputScanning]);
+
+            const generarReporteSalida = () => {
+                if (scannedItems.length === 0) return alert("Escanea bobinas primero.");
+                const doc = new window.jspdf.jsPDF();
+                doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text(empresa, 14, 20);
+                doc.setFontSize(14); doc.setFont("helvetica", "normal"); doc.text("Reporte de Salida a Producción", 14, 28);
+                doc.setFontSize(10); doc.text(`Fecha: ${formatDateDisplay(today)}`, 14, 34);
+
+                const kgTotal = scannedItems.reduce((acc, curr) => acc + (parseFloat(String(curr.kg || '').replace(',', '.')) || 0), 0);
+                doc.text(`Total Bobinas: ${scannedItems.length} | Total Salida: ${kgTotal.toLocaleString('es-AR')} kg`, 14, 39);
+
+                doc.autoTable({
+                    startY: 45,
+                    head: [['ID Bobina', 'Proveedor', 'SKU', 'L.Hija', 'Kg']],
+                    body: scannedItems.map(item => [item.uid, item.proveedor, item.sku, item.loteHija, `${item.kg} kg`]),
+                    theme: 'striped', headStyles: { fillColor: [37, 99, 235] }
+                });
+
+                const finalY = doc.lastAutoTable.finalY || 50;
+                doc.text("_________________________________", 14, finalY + 30); doc.text("Firma Despacho", 14, finalY + 35);
+                doc.text("_________________________________", 100, finalY + 30); doc.text("Firma Recepción", 100, finalY + 35);
+
+                doc.save(`Remito_Salida_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
+            };
+
+            const handlePreview = (row) => {
+                setPreviewRow(row);
+                setPreviewPdfUrl(null);
+                
+                setTimeout(async () => {
+                    try {
+                        const el = document.getElementById('preview-capture-root');
+                        if(!el) return;
+                        
+                        const canvas = await window.html2canvas(el, {
+                            scale: 2, 
+                            useCORS: true, 
+                            letterRendering: true, 
+                            windowWidth: 794,
+                            scrollY: 0,
+                            scrollX: 0
+                        });
+                        
+                        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        const blob = doc.output('blob');
+                        setPreviewPdfUrl(URL.createObjectURL(blob));
+                    } catch (err) {
+                        console.error("Error al previsualizar", err);
+                    }
+                }, 300);
+            };
+
+            return (
+                <div className="min-h-screen">
+
+                    {/* MODAL DE CONFIRMACIÓN */}
+                    {showCloseModal && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-center items-center p-4 no-print">
+                            <div className="bg-white p-8 rounded-2xl w-full max-w-md text-center shadow-2xl">
+                                <div className="bg-blue-100 text-blue-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Icon name="printer" size={40} />
+                                </div>
+                                <h3 className="font-black text-2xl mb-3 text-gray-800">Cerrar Lista e Imprimir</h3>
+                                <div className="text-sm text-gray-500 mb-8 space-y-2 text-left bg-gray-50 p-4 rounded-xl">
+                                    <p className="font-bold text-gray-700">Secuencia automática:</p>
+                                    <p className="flex items-center gap-2"><Icon name="check" size={14} className="text-blue-500" /> 1. Procesar documento unificado</p>
+                                    <p className="flex items-center gap-2"><Icon name="check" size={14} className="text-blue-500" /> 2. Descargar <b className="text-blue-700">PDF Único</b> (Resumen + Rótulos)</p>
+                                    <p className="text-[10px] italic text-gray-400 mt-2">*El archivo contendrá una página inicial con el resumen general, seguida de una hoja A4 independiente para cada rótulo. Te recomendamos imprimir directamente desde el visor de PDF descargado.</p>
+                                </div>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-bold hover:bg-gray-300">
+                                        Cancelar
+                                    </button>
+                                    <button onClick={procesarCierreLista} className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg">
+                                        Confirmar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MENÚ SUPERIOR STICKY */}
+                    <div className="bg-white shadow-md border-b border-gray-200 no-print sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex flex-col sm:flex-row justify-between items-center sm:h-16 py-3 sm:py-0 gap-3">
+                                <div className="flex items-center gap-2 font-black text-2xl tracking-tighter text-gray-800">
+                                    <Icon name="box" size={28} /> MOLDERIL S.A.
+                                </div>
+                                <div className="flex gap-4 sm:gap-8 h-full w-full sm:w-auto justify-center">
+                                    <button onClick={() => setAppMode('rotulos')} className={`flex items-center gap-2 h-full px-2 py-2 sm:py-0 font-bold transition-all text-sm sm:text-base ${appMode === 'rotulos' ? 'tab-active border-b-4 border-blue-600' : 'tab-inactive hover:text-blue-500'}`}>
+                                        <Icon name="tag" /> Rótulos
+                                    </button>
+                                    <button onClick={() => { setAppMode('salidas'); setIsOutputScanning(true); }} className={`flex items-center gap-2 h-full px-2 py-2 sm:py-0 font-bold transition-all text-sm sm:text-base ${appMode === 'salidas' ? 'tab-active border-b-4 border-blue-600' : 'tab-inactive hover:text-blue-500'}`}>
+                                        <Icon name="camera" /> Salidas
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* MODO 1: RÓTULOS */}
+                    {appMode === 'rotulos' && (
+                        <div className="p-4 md:p-8">
+
+                            {/* Previsualización Etiqueta */}
+                            {previewRow && (
+                                <>
+                                    <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-center items-center p-4 no-print text-center">
+                                        <div className="bg-gray-200 p-2 sm:p-4 rounded-xl w-full max-w-[220mm] h-[90vh] flex flex-col relative shadow-2xl">
+                                            <div className="flex justify-between items-center mb-3 bg-white p-3 rounded-lg shadow-sm">
+                                                <h3 className="font-black text-lg text-gray-800 uppercase flex items-center gap-2"><Icon name="tag" /> Vista Previa Nativa PDF</h3>
+                                                <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-red-600 text-white p-2 rounded-lg font-bold hover:bg-red-700 transition-colors">
+                                                    <Icon name="close" size={18} />
+                                                </button>
+                                            </div>
+                                            <div className="flex-1 w-full bg-gray-300 rounded-b-lg overflow-hidden relative flex justify-center items-center">
+                                                {previewPdfUrl ? (
+                                                    <iframe src={previewPdfUrl} className="w-full h-full border-none" title="Vista Previa PDF"></iframe>
+                                                ) : (
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                                        <p className="font-bold text-gray-600 animate-pulse">Construyendo documento interactivo...</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* CONTENEDOR OCULTO PERFECTO: Posición fija sin offset negativo para evitar fallos de renderizado en html2canvas */}
+                                    <div id="preview-capture-root" style={{ position: 'fixed', top: '0', left: '0', zIndex: '-9999', width: '794px', minWidth: '794px' }}>
+                                        <div className="bg-white" style={{ width: '794px', height: '1123px' }}>
+                                            <BobinaLabel row={previewRow} empresa={empresa} formatDateDisplay={formatDateDisplay} />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Modal Re-etiquetar - Construcción invulnerable al desmontaje */}
+                            <div className={`fixed inset-0 bg-black/80 z-50 flex-col justify-center items-center p-4 no-print ${isRelabelScanning ? 'flex' : 'hidden'}`}>
+                                <div className="bg-white p-4 rounded-xl w-full max-w-md text-center shadow-2xl">
+                                    <h3 className="font-black text-lg mb-2">Escanear para Re-etiquetar</h3>
+                                    <p className="text-sm text-gray-500 mb-4">Apunta al QR de la bobina. Se creará una fila nueva con sus datos para que los edites.</p>
+                                    <div id="reader-relabel" className="w-full"></div>
+                                    <button onClick={closeRelabelScanner} className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg font-bold w-full shadow-lg">Cancelar</button>
+                                </div>
+                            </div>
+
+                            {/* Controles de Acción Rápidos */}
+                            <div className={`max-w-[297mm] mx-auto mb-6 flex flex-wrap gap-4 items-center justify-between bg-white p-5 rounded-xl shadow border border-gray-200 no-print`}>
+                                <div className="flex gap-2 flex-wrap">
+                                    <input type="file" id="excel-upload" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+                                    <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
+
+                                    <button onClick={() => document.getElementById('excel-upload').click()} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-emerald-700 text-sm shadow-md active:scale-95">
+                                        <Icon name="upload" /> Insumos (Excel)
+                                    </button>
+                                    <button onClick={() => setIsRelabelScanning(true)} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-purple-700 text-sm shadow-md active:scale-95">
+                                        <Icon name="edit" /> Re-etiquetar (Escanear)
+                                    </button>
+                                </div>
+                                <div className="flex gap-2 flex-wrap">
+                                    <button onClick={() => document.getElementById('json-upload').click()} className="bg-amber-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-amber-700 text-sm shadow-md active:scale-95">
+                                        <Icon name="folder" /> Cargar Lista
+                                    </button>
+                                    <button onClick={exportarProyecto} className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-amber-600 text-sm shadow-md active:scale-95">
+                                        <Icon name="save" /> Guardar Lista
+                                    </button>
+                                    <button onClick={() => { if (window.confirm("¿Borrar todos los datos de sesión guardados en este dispositivo?")) { localStorage.removeItem('molderilRows'); localStorage.removeItem('molderilScanned'); window.location.reload(); } }} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-red-600 text-sm shadow-md active:scale-95 ml-2" title="Limpiar caché">
+                                        <Icon name="trash" /> Reiniciar
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* TABLA PRINCIPAL */}
+                            <div className="max-w-[297mm] mx-auto bg-white p-[10mm] border shadow-xl mb-6 page-break">
+                                <div className="flex justify-between items-end border-b-2 border-gray-800 pb-4 mb-6 uppercase">
+                                    <div><h2 className="text-3xl font-black">{empresa}</h2><p className="text-xs font-bold text-gray-500 tracking-widest">Generación de Rótulos</p></div>
+                                    <div className="text-right"><p className="text-[10px] font-bold text-gray-400">FECHA</p><p className="font-mono text-gray-800">{formatDateDisplay(today)}</p></div>
+                                </div>
+
+                                <div className={`w-full ${activeDropdown ? 'pb-[320px]' : 'pb-4'} overflow-x-auto shadow-inner rounded-sm transition-all duration-300 ease-in-out`}>
+                                    <table className="w-full border-collapse border border-gray-400 text-[10px] min-w-max">
+                                        <thead>
+                                            <tr className="bg-gray-100 text-gray-700">
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[60px]" style={{ width: '70px' }}>FECHA</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[80px]" style={{ width: '130px' }}>PROVEEDOR</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[70px]" style={{ width: '90px' }}>TIPO</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[60px]" style={{ width: '70px' }}>GRAMAJE<br />(gr/m²)</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[50px]" style={{ width: '60px' }}>ANCHO<br />(mm)</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[70px]" style={{ width: '80px' }}>SKU (Art)</th>
+                                                <th className="border border-gray-400 p-2 text-center th-resize min-w-[50px]" style={{ width: '60px' }}>CORTE</th>
+                                                <th className="border border-gray-400 p-2 text-center bg-blue-50 th-resize min-w-[50px]" style={{ width: '60px' }}>KG</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[60px]" style={{ width: '80px' }}>L.MADRE</th>
+                                                <th className="border border-gray-400 p-2 text-left th-resize min-w-[60px]" style={{ width: '80px' }}>L.HIJA</th>
+                                                <th className="border border-gray-400 p-2 text-center no-print min-w-[50px]" style={{ width: '60px' }}>ACCIONES</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {rows.map(row => (
+                                                <tr key={row.id} className="border-b border-gray-200">
+                                                    <td className="border-r border-gray-300 p-0"><input type="date" className="w-full p-2 border-none outline-none text-[9px]" value={row.fecha} onChange={e => updateRow(row.id, 'fecha', e.target.value)} /></td>
+
+                                                    {/* Función Helper para renders de autocompletado en celdas */}
+                                                    {['proveedor', 'tipo', 'gramaje', 'ancho', 'sku'].map(field => (
+                                                        <td key={field} className="border-r border-gray-300 p-0 relative">
+                                                            <input
+                                                                className={`w-full p-2 border-none outline-none ${field === 'sku' ? 'text-[8px] font-bold text-blue-800' : 'text-[9px]'} uppercase`}
+                                                                value={row[field]}
+                                                                onChange={e => updateRow(row.id, field, e.target.value)}
+                                                                onFocus={() => setActiveDropdown({ id: row.id, field: field })}
+                                                                onBlur={() => setTimeout(() => setActiveDropdown(null), 250)}
+                                                                placeholder={field === 'proveedor' ? "Buscar..." : ""}
+                                                            />
+                                                            {activeDropdown?.id === row.id && activeDropdown?.field === field && (
+                                                                <div className="absolute z-[999] left-0 top-full mt-1 w-[250px] bg-white border border-gray-400 shadow-2xl max-h-[300px] overflow-y-auto no-print">
+                                                                    {insumosDB.filter(item => {
+                                                                        // Filtros en cascada: Proveedor -> Tipo -> Resto para no causar bloqueos al borrar
+                                                                        const norm = (str) => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                                                                        let match = true;
+
+                                                                        // 1. Siempre debe coincidir con la columna que estamos editando AHORA
+                                                                        if (row[field]) match = match && norm(item[field]).includes(norm(row[field]));
+
+                                                                        // 2. Si editamos algo debajo de Proveedor, el Proveedor escrito nos limita
+                                                                        if (field !== 'proveedor' && row.proveedor) {
+                                                                            match = match && norm(item.proveedor).includes(norm(row.proveedor));
+                                                                        }
+
+                                                                        // 3. Si editamos algo debajo de Tipo, el Tipo escrito nos limita
+                                                                        if (field !== 'proveedor' && field !== 'tipo' && row.tipo) {
+                                                                            match = match && norm(item.tipo).includes(norm(row.tipo));
+                                                                        }
+
+                                                                        // Ignoramos dependencias "hacia arriba" (SKU, gramaje) para que si borras un Tipo, el SKU viejo no te oculte la lista
+                                                                        return match;
+                                                                    })
+                                                                        // Filtrar valores ÚNICOS para la columna que estamos editando
+                                                                        .filter((item, idx, self) => idx === self.findIndex(t => t[field] === item[field]))
+                                                                        .map((item, idx) => (
+                                                                            <div key={idx} className="p-2 hover:bg-blue-100 cursor-pointer border-b border-gray-100"
+                                                                                onClick={() => {
+                                                                                    if (field === 'proveedor') {
+                                                                                        // Si solo buscar proveedor, llenamos eso para que sirva de filtro
+                                                                                        updateRow(row.id, 'proveedor', item.proveedor);
+                                                                                    } else {
+                                                                                        // Si elige SKU o Tipo, llenamos toda la fila con precisión
+                                                                                        updateRow(row.id, 'proveedor', item.proveedor);
+                                                                                        updateRow(row.id, 'tipo', item.tipo);
+                                                                                        updateRow(row.id, 'gramaje', item.gramaje);
+                                                                                        updateRow(row.id, 'ancho', item.ancho);
+                                                                                        updateRow(row.id, 'sku', item.sku);
+                                                                                    }
+                                                                                    setActiveDropdown(null);
+                                                                                }}>
+
+                                                                                <div className="flex justify-between items-start mb-1">
+                                                                                    {/* Mostramos en grande exactamente el campo que el usuario clickeó para buscar */}
+                                                                                    <span className="font-black text-blue-900 text-[11px] uppercase truncate">
+                                                                                        {item[field]}
+                                                                                    </span>
+                                                                                </div>
+
+                                                                                {/* Si NO estamos buscando solo proveedor, mostramos metadata auxiliar */}
+                                                                                {field !== 'proveedor' && (
+                                                                                    <div className="text-gray-700 text-[9px] leading-tight">
+                                                                                        <div className="flex gap-2 text-[8px] text-gray-500 uppercase">
+                                                                                            {field !== 'sku' && <span>SKU: <b className="text-gray-700">{item.sku}</b></span>}
+                                                                                            {field !== 'tipo' && <span className="truncate max-w-[150px]">Tipo: <b className="text-gray-700">{item.tipo}</b></span>}
+                                                                                            {field === 'tipo' && <span>Prov: <b className="text-gray-700">{item.proveedor}</b></span>}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    ))}
+
+                                                    <td className="border-r border-gray-300 p-0"><input className="w-full p-2 border-none outline-none text-center font-bold text-[9px]" value={row.corte} onChange={e => updateRow(row.id, 'corte', e.target.value)} /></td>
+                                                    <td className="border-r border-gray-300 p-0 bg-blue-50/30"><input className="w-full p-2 border-none outline-none text-center font-black text-blue-800 text-[10px]" value={row.kg} onChange={e => updateRow(row.id, 'kg', e.target.value)} /></td>
+                                                    <td className="border-r border-gray-300 p-0"><input className="w-full p-2 border-none outline-none font-mono text-[8px] uppercase" value={row.loteMadre} onChange={e => updateRow(row.id, 'loteMadre', e.target.value)} /></td>
+                                                    <td className="border-r border-gray-300 p-0"><input className="w-full p-2 border-none outline-none font-mono text-[8px] uppercase" value={row.loteHija} onChange={e => updateRow(row.id, 'loteHija', e.target.value)} /></td>
+                                                    <td className="p-1 text-center flex gap-1 justify-center items-center h-full no-print">
+                                                        <button onClick={() => handlePreview(row)} className="bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white p-1.5 rounded transition-colors" title="Previsualizar Etiqueta"><Icon name="tag" size={12} /></button>
+                                                        <button onClick={() => removeRow(row.id)} className="bg-red-50 text-red-400 hover:bg-red-600 hover:text-white p-1.5 rounded transition-colors" title="Eliminar Fila"><Icon name="trash" size={12} /></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="mt-4 flex justify-between items-center bg-gray-50 p-4 border border-gray-200 rounded-lg no-print">
+                                    <div className="flex gap-2">
+                                        <button onClick={addRow} className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-black text-sm shadow-md active:scale-95"><Icon name="plus" /> Añadir Fila</button>
+                                        <button onClick={sortBobinas} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-indigo-700 text-sm shadow-md active:scale-95 transition-transform" title="Ordena la lista">
+                                            <Icon name="sort" /> Ordenar Bobinas
+                                        </button>
+                                        <button onClick={() => { if (window.confirm("¿Seguro que deseas vaciar toda la grilla de carga?")) setRows([{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]); }} className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-red-600 hover:text-white text-sm shadow-sm active:scale-95 transition-colors" title="Vaciar grilla completa">
+                                            <Icon name="trash" /> Vaciar Grilla
+                                        </button>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xs font-bold text-gray-500 uppercase mr-4">Total Kg:</span>
+                                        <span className="text-xl font-black text-blue-700">{totalKg.toLocaleString('es-AR')}</span>
+                                    </div>
+                                </div>
+
+                                {/* SECCIÓN INFERIOR: SUBTOTALES Y BOTÓN DE CIERRE */}
+                                <div className="mt-6 border-t border-gray-200 pt-6 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+                                    <div className="w-full lg:flex-1">
+                                        {subtotalesPorSKU.length > 0 && (
+                                            <div>
+                                                <h3 className="font-bold text-gray-700 uppercase tracking-widest text-xs mb-3">Resumen de Subtotales (Agrupado por SKU)</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                    {subtotalesPorSKU.map((sub, i) => (
+                                                        <div key={i} className="bg-blue-50 border border-blue-200 p-3 rounded-lg flex justify-between items-center">
+                                                            <div>
+                                                                <p className="font-black text-xs text-blue-900 uppercase">{sub.sku}</p>
+                                                                <p className="text-[9px] text-gray-500 font-bold mt-1">{sub.proveedor} | {sub.tipo}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-black text-sm text-blue-800">{sub.kg.toLocaleString('es-AR')} kg</p>
+                                                                <p className="text-[9px] text-gray-400 font-bold">{sub.count} bobinas</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="w-full lg:w-auto flex-shrink-0 no-print">
+                                        <button
+                                            onClick={() => setShowCloseModal(true)}
+                                            className="bg-emerald-600 text-white px-8 py-4 rounded-xl font-black flex items-center gap-3 hover:bg-emerald-700 shadow-xl transition-transform active:scale-95 text-lg w-full lg:w-auto justify-center"
+                                        >
+                                            <Icon name="printer" size={24} /> CERRAR LISTA E IMPRIMIR
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* CONTENEDOR OCULTO DE ETIQUETAS A IMPRIMIR (UNIFICADO) */}
+                            <div id="labels-print-container" className="hidden print:block w-full">
+                                <PrintableSummary 
+                                    validRows={rows.filter(r => r.proveedor || r.kg)} 
+                                    subtotalesPorSKU={subtotalesPorSKU} 
+                                    totalKg={totalKg} 
+                                    empresa={empresa} 
+                                    today={today}
+                                    formatDateDisplay={formatDateDisplay}
+                                />
+                                {rows.filter(r => r.proveedor || r.kg).map(row => (
+                                    <BobinaLabel key={`print-${row.id}`} row={row} empresa={empresa} formatDateDisplay={formatDateDisplay} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODO 2: ESCANEO DE SALIDAS */}
+                    {appMode === 'salidas' && (
+                        <div className="p-4 md:p-8 max-w-7xl mx-auto h-[calc(100vh-80px)]">
+                            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 h-full flex flex-col md:flex-row overflow-hidden">
+
+                                <div className="w-full md:w-1/2 bg-gray-900 p-6 flex flex-col items-center justify-center relative">
+                                    <h2 className="text-white font-black text-2xl mb-2 flex items-center gap-2"><Icon name="camera" /> Escáner de Bobinas</h2>
+                                    <p className="text-gray-400 text-sm mb-6 text-center">Apunta al código QR de la etiqueta para registrar la salida.</p>
+
+                                    <div className="bg-white p-2 rounded-xl w-full max-w-sm">
+                                        <div id="reader-salidas" className="w-full"></div>
+                                    </div>
+
+                                    {!isOutputScanning ? (
+                                        <button onClick={() => setIsOutputScanning(true)} className="mt-6 bg-blue-600 text-white px-8 py-3 rounded-xl font-bold w-full max-w-sm hover:bg-blue-700">Activar Cámara</button>
+                                    ) : (
+                                        <button onClick={closeOutputScanner} className="mt-6 bg-red-600 text-white px-8 py-3 rounded-xl font-bold w-full max-w-sm hover:bg-red-700 shadow-lg">Pausar Cámara</button>
+                                    )}
+                                </div>
+
+                                <div className="w-full md:w-1/2 bg-white flex flex-col p-6 h-full">
+                                    <div className="flex justify-between items-end border-b-2 border-gray-100 pb-4 mb-4">
+                                        <h3 className="text-xl font-black text-gray-800 uppercase">Lista de Salida</h3>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-bold text-gray-400">BOBINAS</p>
+                                            <p className="text-2xl font-black text-blue-600 leading-none">{scannedItems.length}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-grow overflow-y-auto space-y-3 pr-2">
+                                        {scannedItems.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
+                                                <Icon name="box" size={48} />
+                                                <p className="mt-4 font-bold">No hay bobinas escaneadas</p>
+                                            </div>
+                                        ) : (
+                                            scannedItems.map((item, idx) => (
+                                                <div key={idx} className="bg-blue-50/50 border border-blue-100 p-3 rounded-xl flex justify-between items-center">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-blue-900 uppercase leading-tight">{item.proveedor}</p>
+                                                            <span className="text-[9px] bg-blue-200 text-blue-800 px-1 rounded font-mono">{item.sku}</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-500 font-mono mt-1">ID: {item.uid} | LH: {item.loteHija}</p>
+                                                    </div>
+                                                    <div className="font-black text-lg text-blue-700">{item.kg} kg</div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    <div className="pt-4 mt-4 border-t-2 border-gray-100">
+                                        <button
+                                            onClick={generarReporteSalida}
+                                            disabled={scannedItems.length === 0}
+                                            className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black uppercase tracking-wider flex justify-center items-center gap-2 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                                        >
+                                            <Icon name="filePdf" /> Generar Reporte PDF
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (scannedItems.length === 0) return alert("No hay datos para exportar.");
+                                                const ws = window.XLSX.utils.json_to_sheet(scannedItems.map(item => ({
+                                                    'ID Bobina (UID)': item.uid,
+                                                    'Proveedor': item.proveedor,
+                                                    'Tipo': item.tipo,
+                                                    'SKU/Artículo': item.sku,
+                                                    'Lote Madre': item.loteMadre,
+                                                    'Lote Hija': item.loteHija,
+                                                    'Kg Netos': item.kg
+                                                })));
+                                                const wb = window.XLSX.utils.book_new();
+                                                window.XLSX.utils.book_append_sheet(wb, ws, "Salidas");
+                                                window.XLSX.writeFile(wb, `Exportacion_Salida_${formatDateDisplay(today).replace(/\//g, '-')}.xlsx`);
+                                            }}
+                                            disabled={scannedItems.length === 0}
+                                            className="w-full mt-3 bg-green-700 text-white py-3 rounded-xl font-bold uppercase tracking-wider flex justify-center items-center gap-2 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                                        >
+                                            <Icon name="upload" /> Exportar a Excel
+                                        </button>
+                                        <button
+                                            onClick={() => { if (window.confirm("¿Limpiar lista?")) setScannedItems([]); }}
+                                            className="w-full mt-4 text-gray-400 text-sm font-bold py-2 hover:text-red-500"
+                                        >
+                                            Limpiar Lista
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        };
+
+        class ErrorBoundary extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+            static getDerivedStateFromError(error) {
+                return { hasError: true, error };
+            }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="p-8 bg-red-50 min-h-screen flex flex-col justify-center items-center text-center">
+                            <svg className="w-16 h-16 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h1 className="text-3xl font-black text-red-700 mb-2">Algo salió mal en la aplicación</h1>
+                            <p className="text-red-900 mb-6 max-w-md">Un error inesperado causó que la aplicación se detuviera. Para solucionarlo rápidamente, puedes reiniciar y limpiar los datos guardados.</p>
+                            <pre className="bg-red-900 text-white text-left p-4 rounded-xl mb-6 text-xs max-w-2xl overflow-x-auto w-full shadow-inner shadow-red-950/50">
+                                {this.state.error?.toString()}
+                            </pre>
+                            <button onClick={() => { localStorage.removeItem('molderilRows'); localStorage.removeItem('molderilScanned'); window.location.reload(); }} className="bg-red-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-red-700 active:scale-95 transition-all text-lg">
+                                Reiniciar y Borrar Datos
+                            </button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
+    </script>
+</body>
+
+</html>
