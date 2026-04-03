@@ -94,98 +94,166 @@
             return <div ref={canvasRef} style={{ width: size, height: size }} title="QR Code Seguro" />;
         };
 
-        const BobinaLabel = ({ row, empresa, formatDateDisplay }) => {
-            const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.MADRE: ${row.loteMadre} | L.HIJA: ${row.loteHija} | CORTE: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
+        const getQRCodeDataURL = (text) => {
+            return new Promise((resolve) => {
+                const div = document.createElement('div');
+                new window.QRCode(div, { text: text, width: 256, height: 256, correctLevel: window.QRCode.CorrectLevel.M });
+                setTimeout(() => {
+                    const canvas = div.querySelector('canvas');
+                    resolve(canvas.toDataURL('image/png'));
+                }, 100);
+            });
+        };
 
-            return (
-                <div className="label-page bg-white box-border print:shadow-none shadow-xl mb-4 overflow-hidden" style={{ width: '794px', minWidth: '794px', height: '1123px', minHeight: '1123px', padding: '38px', margin: '0 auto', pageBreakAfter: 'always', breakAfter: 'page' }}>
-                    <div className="w-full h-full border-[6px] border-double border-black flex flex-col justify-between p-[30px] box-border relative">
+        const drawBobinaLabelNative = async (doc, row, empresa, qrData) => {
+            // A4 page is 210 x 297 mm
+            // Border
+            doc.setLineWidth(1.5);
+            doc.rect(10, 10, 190, 277);
 
-                        <div className="text-center border-b-8 border-black pb-4 shrink-0">
-                            <h1 className="font-black mb-1 tracking-tighter" style={{ fontSize: '56px', lineHeight: '1' }}>{empresa}</h1>
-                            <p className="text-[20px] font-bold tracking-[0.4em] text-gray-500 uppercase">IDENTIFICACIÓN DE BOBINA</p>
-                        </div>
+            // Header
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(40);
+            doc.text(empresa, 105, 30, { align: "center" });
+            
+            doc.setFontSize(14);
+            doc.setTextColor(100, 100, 100);
+            doc.text("IDENTIFICACION DE BOBINA", 105, 40, { align: "center", charSpace: 2 });
+            doc.setTextColor(0, 0, 0);
 
-                        <div className="flex-grow py-4 flex flex-col justify-between overflow-hidden">
-                            <div className="flex justify-between items-stretch gap-4">
-                                <div className="flex-1 flex flex-col justify-between py-1 gap-2">
-                                    <div className="border-l-8 border-black pl-4 shrink-0">
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Proveedor</p>
-                                        <p className="text-[36px] font-black uppercase leading-none truncate mt-1">{row.proveedor || 'S/D'}</p>
-                                    </div>
-                                    <div className="border-l-8 border-blue-600 pl-4 shrink-0">
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">SKU / Artículo</p>
-                                        <p className="text-[30px] font-black uppercase text-blue-800 leading-none truncate mt-1">{row.sku || 'S/D'}</p>
-                                    </div>
-                                    <div className="border-l-8 border-black pl-4 pr-2 overflow-hidden h-full flex flex-col justify-start">
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tipo de Papel</p>
-                                        <p className="text-[24px] font-bold uppercase leading-tight break-words">{row.tipo || 'S/D'}</p>
-                                    </div>
-                                </div>
-                                <div className="w-[180px] shrink-0 flex flex-col items-center justify-center p-3 border-4 border-dashed border-gray-200 bg-gray-50 rounded-xl">
-                                    <QRCodeCanvas text={qrData} size={140} />
-                                    <p className="text-[10px] font-mono mt-2 text-gray-800 font-bold uppercase tracking-widest text-center w-full">ID: {row.uid}</p>
-                                </div>
-                            </div>
+            doc.setLineWidth(0.5);
+            doc.line(10, 48, 200, 48);
 
-                            <div className={`grid ${row.corte ? 'grid-cols-2' : 'grid-cols-1'} gap-4 my-6`}>
-                                {row.corte && (
-                                    <div className="bg-black text-white p-6 flex flex-col items-center justify-center text-center rounded-sm">
-                                        <p className="text-[18px] font-bold uppercase opacity-70 mb-1 tracking-widest">Corte B. Hija</p>
-                                        <div className="flex items-baseline justify-center">
-                                            <p className="text-[72px] font-black leading-none">{row.corte}</p>
-                                            <span className="text-[20px] ml-1 uppercase font-bold">mm</span>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="border-8 border-black p-6 flex flex-col items-center justify-center text-center rounded-sm">
-                                    <p className="text-[18px] font-bold uppercase text-gray-500 mb-1 tracking-widest">Peso Neto</p>
-                                    <div className="flex items-baseline justify-center text-blue-900">
-                                        <p className="text-[96px] font-black leading-none">{row.kg || '0'}</p>
-                                        <span className="text-[24px] ml-2 uppercase font-bold">kg</span>
-                                    </div>
-                                </div>
-                            </div>
+            // Row 1: Proveedor, SKU, Tipo // QR
+            // Proveedor
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text("PROVEEDOR", 15, 60);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(26);
+            doc.text(row.proveedor || 'S/D', 15, 70);
 
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-gray-800 border-t-4 border-gray-200 pt-6 mt-2">
-                                <div>
-                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Gramaje</p>
-                                    <p className="text-[36px] font-black">{row.gramaje || '---'} <span className="text-[18px] text-gray-400 font-bold uppercase">gr/m²</span></p>
-                                </div>
-                                <div>
-                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Ancho Orig.</p>
-                                    <p className="text-[36px] font-black">{row.ancho || '---'} <span className="text-[18px] text-gray-400 font-bold uppercase">mm</span></p>
-                                </div>
-                                <div>
-                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Lote Madre</p>
-                                    <p className="text-[24px] font-mono font-bold break-all leading-none">{row.loteMadre || 'N/A'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[14px] font-bold uppercase text-gray-500 tracking-wider mb-1">Lote Hija</p>
-                                    <p className="text-[24px] font-mono font-bold break-all leading-none">{row.loteHija || 'N/A'}</p>
-                                </div>
-                            </div>
+            // SKU
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text("SKU / ARTICULO", 15, 90);
+            doc.setTextColor(29, 78, 216); // text-blue-800
+            doc.setFontSize(32);
+            doc.text(row.sku || 'S/D', 15, 102);
 
-                            {row.obs && (
-                                <div className="bg-gray-100 p-4 mt-6 rounded shrink-0">
-                                    <p className="text-[10px] font-bold uppercase text-gray-500 tracking-widest mb-1">Observaciones</p>
-                                    <p className="text-[16px] font-bold text-gray-700 leading-snug truncate">{row.obs}</p>
-                                </div>
-                            )}
-                        </div>
+            // Tipo
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text("TIPO DE PAPEL", 15, 122);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(24);
+            const tipoLines = doc.splitTextToSize(row.tipo || 'S/D', 110);
+            doc.text(tipoLines, 15, 132);
 
-                        <div className="border-t-4 border-black pt-4 flex justify-between items-end mt-4 shrink-0">
-                            <div>
-                                <p className="text-[14px] font-bold uppercase text-gray-500">Fecha de Registro</p>
-                                <p className="text-[24px] font-black">{formatDateDisplay(row.fecha)}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[9px] text-gray-400 font-mono tracking-widest uppercase">Molderil S.A. Control Interno</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
+            // QR Code (Right side)
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineDash([2, 2], 0);
+            doc.rect(130, 58, 60, 75);
+            doc.setLineDash([], 0);
+            doc.setDrawColor(0, 0, 0);
+
+            const qrImg = await getQRCodeDataURL(qrData);
+            doc.addImage(qrImg, 'PNG', 135, 63, 50, 50);
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text("ID: " + row.uid, 160, 126, { align: "center" });
+
+            // Row 2: Corte / Peso (Huge box)
+            doc.setLineWidth(1.5);
+            doc.line(10, 150, 200, 150);
+            doc.line(10, 230, 200, 230);
+
+            if (row.corte) {
+                // Split in half
+                doc.line(105, 150, 105, 230);
+
+                // Corte
+                doc.setFillColor(0, 0, 0);
+                doc.rect(10, 150, 95, 80, 'F');
+                doc.setTextColor(255, 255, 255);
+                
+                doc.setFontSize(14);
+                doc.text("ANCHO HIJA", 57.5, 165, { align: "center", charSpace: 1 });
+                
+                doc.setFontSize(65);
+                doc.text(row.corte, 50, 205, { align: "right" });
+                doc.setFontSize(16);
+                doc.text("mm", 55, 205);
+                
+                doc.setTextColor(0, 0, 0);
+
+                // Peso Neto
+                doc.setFontSize(14);
+                doc.setTextColor(100, 100, 100);
+                doc.text("PESO NETO", 152.5, 165, { align: "center", charSpace: 1 });
+                doc.setTextColor(30, 58, 138); // text-blue-900
+                
+                doc.setFontSize(80);
+                doc.text(row.kg.toString() || '0', 145, 210, { align: "right" });
+                doc.setFontSize(18);
+                doc.text("kg", 150, 210);
+            } else {
+                // Full Width Peso
+                doc.setFontSize(16);
+                doc.setTextColor(100, 100, 100);
+                doc.text("PESO NETO", 105, 165, { align: "center", charSpace: 1 });
+                doc.setTextColor(30, 58, 138);
+                
+                doc.setFontSize(100);
+                doc.text(row.kg.toString() || '0', 105, 215, { align: "center" });
+                doc.setFontSize(22);
+                doc.text("kg", 170, 215);
+            }
+
+            doc.setTextColor(0, 0, 0);
+
+            // Row 3: Detalles inferiores
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("GRAMAJE", 15, 242);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(22);
+            doc.text((row.gramaje || '---') + " gr", 15, 252);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("ANCHO ORIG.", 70, 242);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(22);
+            doc.text((row.ancho || '---') + " mm", 70, 252);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("LOTE PROV.", 130, 242);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.text(row.loteMadre || 'N/A', 130, 252);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("LOTE PROD.", 15, 267);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(18);
+            doc.text(row.loteHija || 'N/A', 15, 277);
+
+            // Obs
+            if (row.obs) {
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text("OBSERVACIONES", 70, 267);
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(12);
+                const obsLines = doc.splitTextToSize(row.obs, 120);
+                doc.text(obsLines, 70, 274);
+            }
         };
 
         const App = () => {
@@ -379,68 +447,15 @@
 
                 setTimeout(async () => {
                     try {
-                        const labelsContainer = document.getElementById('labels-print-container');
-                        labelsContainer.classList.remove('hidden');
-                        labelsContainer.style.display = 'block';
-                        labelsContainer.style.position = 'fixed';
-                        labelsContainer.style.top = '0px';
-                        labelsContainer.style.left = '0px';
-                        labelsContainer.style.zIndex = '-9999';
-                        labelsContainer.style.width = '210mm';
-
-                        await new Promise(resolve => setTimeout(resolve, 800));
-
-                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                        doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text(empresa, 14, 20);
-                        doc.setFontSize(14); doc.setFont("helvetica", "normal"); doc.text("REPORTE OFICIAL DEL PALLET (INGRESOS)", 14, 28);
-                        doc.setFontSize(10); doc.text(`Generado: ${formatDateDisplay(today)}`, 14, 34);
-                        doc.text(`Total Bobinas: ${validRows.length} | Kilos Totales: ${totalKg.toLocaleString('es-AR')} kg`, 14, 39);
-
-                        doc.autoTable({
-                            startY: 45,
-                            head: [['Proveedor', 'Tipo', 'SKU', 'Gramaje', 'Ancho', 'Corte', 'L.Hija', 'Kg']],
-                            body: validRows.map(r => [r.proveedor, r.tipo, r.sku, r.gramaje, r.ancho, r.corte || '-', r.loteHija || '-', `${r.kg}`]),
-                            theme: 'grid', headStyles: { fillColor: [55, 65, 81] }, styles: { fontSize: 8 },
-                        });
-
-                        if (subtotalesPorSKU.length > 0) {
-                            let endY = doc.lastAutoTable.finalY + 15;
-                            if (endY + 30 > 280) { doc.addPage(); endY = 20; }
-                            doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("RESUMEN GLOBAL - KILOS POR PAPEL", 14, endY);
-                            endY += 8;
-                            let x = 14; let y = endY; const rectWidth = 87; const rectHeight = 25; const padding = 4;
-                            subtotalesPorSKU.forEach((sub, i) => {
-                                if (x + rectWidth > 200) { x = 14; y += rectHeight + 5; }
-                                if (y + rectHeight > 280) { doc.addPage(); x = 14; y = 20; }
-                                doc.setDrawColor(200, 200, 200); doc.setFillColor(245, 248, 255);
-                                doc.roundedRect(x, y, rectWidth, rectHeight, 2, 2, 'FD');
-                                doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
-                                doc.text(sub.sku.toUpperCase(), x + padding, y + padding + 4);
-                                doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-                                doc.text(`${sub.proveedor} | ${sub.tipo}`, x + padding, y + padding + 8);
-                                doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
-                                doc.text(`${sub.kg.toLocaleString('es-AR')} kg`, x + padding, y + padding + 15);
-                                doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-                                doc.text(`${sub.count} bobinas`, x + rectWidth - padding - 22, y + padding + 15);
-                                doc.setTextColor(0, 0, 0); x += rectWidth + 5;
-                            });
-                        }
-
-                        const labelNodes = Array.from(labelsContainer.querySelectorAll('.label-page'));
-                        for (let i = 0; i < labelNodes.length; i++) {
-                            const node = labelNodes[i];
+                        // Dibujo Nativo de etiquetas
+                        for (let i = 0; i < validRows.length; i++) {
+                            const row = validRows[i];
                             doc.addPage('a4', 'portrait');
-                            const canvas = await window.html2canvas(node, { scale: 2, useCORS: true, letterRendering: true, windowWidth: 794, scrollY: 0, scrollX: 0 });
-                            const imgData = canvas.toDataURL('image/jpeg', 1.0);
-                            doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                            const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
+                            await drawBobinaLabelNative(doc, row, empresa, qrData);
                         }
 
                         doc.save(`Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
-
-                        labelsContainer.style.display = ''; labelsContainer.style.position = '';
-                        labelsContainer.style.top = ''; labelsContainer.style.left = '';
-                        labelsContainer.style.zIndex = ''; labelsContainer.style.width = '';
-                        labelsContainer.classList.add('hidden');
                         
                     } catch (err) {
                         console.error(err); alert("Hubo un error al generar el PDF.");
@@ -473,9 +488,9 @@
                                     if (p.startsWith("PROV: ")) newRow.proveedor = p.replace("PROV: ", "");
                                     if (p.startsWith("TIPO: ")) newRow.tipo = p.replace("TIPO: ", "");
                                     if (p.startsWith("KG: ")) newRow.kg = p.replace("KG: ", "");
-                                    if (p.startsWith("L.MADRE: ")) newRow.loteMadre = p.replace("L.MADRE: ", "");
-                                    if (p.startsWith("L.HIJA: ")) newRow.loteHija = p.replace("L.HIJA: ", "");
-                                    if (p.startsWith("CORTE: ")) newRow.corte = p.replace("CORTE: ", "");
+                                    if (p.startsWith("L.PROV: ")) newRow.loteMadre = p.replace("L.PROV: ", "");
+                                    if (p.startsWith("L.PROD: ")) newRow.loteHija = p.replace("L.PROD: ", "");
+                                    if (p.startsWith("A.HIJA: ")) newRow.corte = p.replace("A.HIJA: ", "");
                                     if (p.startsWith("SKU: ")) newRow.sku = p.replace("SKU: ", "");
                                     if (p.startsWith("GRAMAJE: ")) newRow.gramaje = p.replace("GRAMAJE: ", "");
                                     if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
@@ -494,181 +509,199 @@
                 setPreviewPdfUrl(null);
                 setTimeout(async () => {
                     try {
-                        const el = document.getElementById('preview-capture-root');
-                        if(!el) return;
-                        const canvas = await window.html2canvas(el, { scale: 2, useCORS: true, letterRendering: true, windowWidth: 794, scrollY: 0, scrollX: 0 });
-                        const imgData = canvas.toDataURL('image/jpeg', 1.0);
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                        doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
+                        await drawBobinaLabelNative(doc, row, empresa, qrData);
                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
                     } catch (err) { console.error("Error al previsualizar", err); }
-                }, 300);
+                }, 100);
             };
 
             return (
-                <div className="min-h-screen">
-                    {/* MODAL CERRAR LISTA */}
+                <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+                    {/* MODAL CERRAR LISTA (Procesar PDF) */}
                     {showCloseModal && (
-                        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-center items-center p-4 no-print border-blue-500">
-                            <div className="bg-white p-8 rounded-2xl w-full max-w-md text-center shadow-2xl border-t-8 border-blue-600">
-                                <Icon name="printer" size={40} className="mx-auto text-blue-600 mb-4" />
-                                <h3 className="font-black text-2xl mb-3">Imprimir Pallet y Rótulos</h3>
-                                <p className="text-sm text-gray-500 mb-8 border border-gray-100 bg-gray-50 p-4 font-medium tracking-tight rounded-lg">
-                                    Esta acción agrupará las bobinas en PDF listo para imprimir para Logística. Recibirás tu hoja A4 del resumen, seguida de los rótulos a pegar.
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4 no-print transition-all">
+                            <div className="bg-white p-8 rounded-3xl w-full max-w-lg text-center shadow-2xl border border-slate-200">
+                                <div className="bg-emerald-100 text-emerald-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Icon name="printer" size={40} />
+                                </div>
+                                <h3 className="font-black text-2xl tracking-tight text-slate-900 mb-3">Emitir Pallet y Rótulos</h3>
+                                <p className="text-slate-500 mb-8 font-medium">
+                                    Esta acción agrupará las bobinas en un PDF de alta calidad listo para imprimir. Recibirás tu hoja A4 de resumen y los rótulos individuales a pegar.
                                 </p>
                                 <div className="flex gap-4">
-                                    <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-gray-100 text-gray-800 px-4 py-3 rounded-xl font-bold hover:bg-gray-200">Cancelar</button>
-                                    <button onClick={procesarCierreLista} className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-xl">Confirmar Imprimir</button>
+                                    <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-100 text-slate-700 px-5 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
+                                    <button onClick={procesarCierreLista} className="flex-1 bg-emerald-600 text-white px-5 py-4 rounded-2xl font-bold hover:bg-emerald-700 shadow-xl shadow-emerald-600/30 transition-all active:scale-95">Confirmar e Imprimir</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* NAVBAR */}
-                    <nav className="bg-slate-900 shadow-lg border-b-4 border-blue-500 px-4 sm:px-8 py-4 no-print flex justify-between items-center z-40 relative">
-                        <div>
-                            <span className="text-white text-lg font-black tracking-tighter uppercase block"><Icon name="box" size={16} /> Recepción Logística</span>
-                            <span className="text-blue-400 text-xs font-bold uppercase tracking-widest">{empresa}</span>
+                    {/* NAVBAR (Sleek SaaS style) */}
+                    <nav className="bg-slate-900 shadow-md px-6 py-4 no-print flex justify-between items-center sm:sticky top-0 z-40 border-b border-slate-800">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400">
+                                <Icon name="box" size={24} />
+                            </div>
+                            <div>
+                                <span className="text-white text-lg font-black tracking-tight uppercase block leading-none">Recepción Logística</span>
+                                <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">{empresa}</span>
+                            </div>
                         </div>
-                        <a href="index.html" className="text-white hover:text-blue-400 font-bold text-sm bg-slate-800 px-4 py-2 rounded-lg flex items-center gap-2 border border-slate-700 hover:border-blue-500 transition-colors">
-                            <Icon name="arrowLeft" size={14} /> Volver a Menú
+                        <a href="index.html" className="text-slate-300 hover:text-white font-semibold text-sm bg-slate-800/50 hover:bg-slate-800 px-5 py-2.5 rounded-xl flex items-center gap-2 border border-slate-700 hover:border-slate-600 transition-all">
+                            <Icon name="arrowLeft" size={16} /> <span className="hidden sm:inline">Volver al Menú</span>
                         </a>
                     </nav>
 
-                    <div className="p-4 md:p-8">
+                    <div className="max-w-[320mm] mx-auto p-4 sm:p-6 lg:p-8">
                         {/* PREVIEW */}
                         {previewRow && (
-                            <>
-                                <div className="fixed inset-0 bg-slate-900/90 z-50 flex flex-col justify-center items-center p-4 no-print text-center">
-                                    <div className="bg-gray-200 p-2 sm:p-4 rounded-xl w-full max-w-[220mm] h-[90vh] flex flex-col relative shadow-2xl">
-                                        <div className="flex justify-between items-center mb-3 bg-white p-3 rounded-lg shadow-sm">
-                                            <h3 className="font-black text-lg text-gray-800 uppercase flex items-center gap-2"><Icon name="tag" /> Vista Previa Nativa PDF</h3>
-                                            <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-red-600 text-white p-2 rounded-lg font-bold">X</button>
-                                        </div>
-                                        <div className="flex-1 w-full bg-slate-300 rounded-b-lg overflow-hidden relative flex justify-center items-center shadow-inner border border-gray-400">
-                                            {previewPdfUrl ? (
-                                                <iframe src={previewPdfUrl} className="w-full h-full border-none" title="Preview"></iframe>
-                                            ) : (
-                                                <div className="animate-pulse font-bold text-slate-500 text-lg">Procesando vectores PDF...</div>
-                                            )}
-                                        </div>
+                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4 no-print">
+                                <div className="bg-slate-100 p-2 sm:p-4 rounded-3xl w-full max-w-[220mm] h-[90vh] flex flex-col relative shadow-2xl overflow-hidden border border-slate-300">
+                                    <div className="flex justify-between items-center mb-3 bg-white p-4 rounded-2xl shadow-sm">
+                                        <h3 className="font-extrabold text-lg text-slate-800 uppercase flex items-center gap-2 tracking-tight"><Icon name="tag" /> Vista Previa del Rótulo</h3>
+                                        <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-slate-900 w-10 h-10 rounded-xl font-bold flex items-center justify-center transition-colors">✕</button>
+                                    </div>
+                                    <div className="flex-1 w-full bg-slate-200/50 rounded-2xl overflow-hidden relative flex justify-center items-center">
+                                        {previewPdfUrl ? (
+                                            <iframe src={previewPdfUrl} className="w-full h-full border-none rounded-xl" title="Preview"></iframe>
+                                        ) : (
+                                            <div className="flex flex-col items-center text-indigo-600 animate-pulse">
+                                                <Icon name="printer" size={48} className="mb-4 opacity-50" />
+                                                <span className="font-bold tracking-tight">Procesando vectores PDF...</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div id="preview-capture-root" style={{ position: 'fixed', top: '0', left: '0', zIndex: '-9999', width: '794px', minWidth: '794px' }}>
-                                    <div className="bg-white" style={{ width: '794px', height: '1123px' }}>
-                                        <BobinaLabel row={previewRow} empresa={empresa} formatDateDisplay={formatDateDisplay} />
-                                    </div>
-                                </div>
-                            </>
+                            </div>
                         )}
 
                         {/* RE-ETIQUETAR MODAL */}
-                        <div className={`fixed inset-0 bg-black/80 z-50 flex-col justify-center items-center p-4 no-print ${isRelabelScanning ? 'flex' : 'hidden'}`}>
-                            <div className="bg-white p-4 rounded-xl w-full max-w-md text-center shadow-2xl">
-                                <h3 className="font-black text-lg mb-2">Re-etiquetar (Escáner)</h3>
-                                <p className="text-sm text-gray-500 mb-4">Apunta la cámara al código original.</p>
-                                <div id="reader-relabel" className="w-full"></div>
-                                <button onClick={closeRelabelScanner} className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg font-bold w-full shadow-lg">Cerrar</button>
-                            </div>
-                        </div>
-
-                        {/* CONTROLES TOP */}
-                        <div className="max-w-[297mm] mx-auto mb-6 flex flex-wrap gap-4 items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
-                            <div className="flex gap-2 flex-wrap items-center w-full sm:w-auto">
-                                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
-                                
-                                <div className="flex flex-col text-sm border-r border-slate-200 pr-5 mr-3">
-                                    <span className="font-black text-slate-800">Cargar Archivos</span>
-                                    <span className="text-slate-400 text-xs">Opcional</span>
+                        {isRelabelScanning && (
+                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4 no-print">
+                                <div className="bg-white p-6 rounded-3xl w-full max-w-md text-center shadow-2xl border border-slate-200">
+                                    <div className="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Icon name="camera" size={32} />
+                                    </div>
+                                    <h3 className="font-black text-xl tracking-tight mb-2">Escanear Rótulo Original</h3>
+                                    <p className="text-slate-500 mb-6 text-sm font-medium">Apunta con tu cámara al código QR impreso en el papel averiado para clonar sus datos a una nueva fila.</p>
+                                    <div id="reader-relabel" className="w-full rounded-2xl overflow-hidden border-2 border-indigo-100"></div>
+                                    <button onClick={closeRelabelScanner} className="mt-6 bg-slate-100 text-slate-700 hover:bg-slate-200 px-6 py-4 rounded-2xl font-bold w-full transition-colors">Cancelar Módulo</button>
                                 </div>
+                            </div>
+                        )}
 
-                                <button onClick={() => document.getElementById('json-upload').click()} className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 text-sm shadow-sm">
-                                    <Icon name="folder" /> Abrir Sesión .json
+                        {/* CONTROLES TOP (DASHBOARD HEADER) */}
+                        <div className="mb-6 flex flex-wrap gap-4 items-center justify-between no-print">
+                            <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+                                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
+                                <button onClick={() => document.getElementById('json-upload').click()} className="text-slate-600 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 hover:text-slate-900 text-sm transition-colors">
+                                    <Icon name="folder" /> <span className="hidden sm:inline">Cargar Sesión</span>
                                 </button>
-                                
-                                <button onClick={() => setIsRelabelScanning(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 text-sm shadow-md">
-                                    <Icon name="camera" /> Copiar Rótulo Roto
+                                <div className="w-px h-6 bg-slate-200"></div>
+                                <button onClick={() => setIsRelabelScanning(true)} className="text-indigo-600 bg-indigo-50 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-100 text-sm transition-colors">
+                                    <Icon name="camera" /> Copiar Rótulo
                                 </button>
-                                
-                                {isAutoLoadingDB && <span className="text-xs font-bold text-amber-500 animate-pulse ml-2">Cargando Insumos Excel...</span>}
+                                {isAutoLoadingDB && <span className="text-xs font-bold text-amber-500 animate-pulse ml-2 px-3">Cargando base...</span>}
                                 {insumosDB.length === 0 && !isAutoLoadingDB && (
-                                    <div className="flex gap-2">
+                                    <div className="ml-2">
                                         <input type="file" id="excel-upload" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
-                                        <button onClick={() => document.getElementById('excel-upload').click()} className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded">
-                                            Falló Carga Excel / Cargar Manual
+                                        <button onClick={() => document.getElementById('excel-upload').click()} className="px-4 py-2 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                                            ⚠️ Cargar Insumos Manualmente
                                         </button>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex gap-2 flex-wrap w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-0 border-slate-200">
-                                <button onClick={exportarProyecto} className="bg-white border-2 border-slate-300 text-slate-800 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 text-sm shadow-sm">
-                                    <Icon name="save" /> Guardar Avance
+                            <div className="flex gap-3">
+                                <button onClick={exportarProyecto} className="bg-white border text-slate-700 px-4 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 shadow-sm transition-colors text-sm">
+                                    <Icon name="save" /> Descargar Avance
                                 </button>
-                                <button onClick={() => { if (window.confirm("¿Seguro de descartar tu progreso y limpiar memoria?")) { localStorage.removeItem('molderilRows'); window.location.reload(); } }} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 text-sm">
+                                <button onClick={() => { if (window.confirm("¿Seguro de descartar tu progreso permanentemente?")) { localStorage.removeItem('molderilRows'); window.location.reload(); } }} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-100 transition-colors text-sm">
                                     <Icon name="trash" /> Borrar Caché
                                 </button>
                             </div>
                         </div>
 
-                        {/* ESTRUCTURA PLANILLA DE CARGA */}
-                        <div className="max-w-[297mm] mx-auto bg-white p-[8mm] shadow-lg border border-slate-200 rounded-lg no-print">
-                            {/* TABLA PRINCIPAL - igual a version previa */}
-                            <div className="w-full pb-3 overflow-x-auto shadow-inner border border-slate-300">
-                                <table className="w-full border-collapse border-slate-300 text-[10px] min-w-max">
-                                    <thead>
-                                        <tr className="bg-slate-800 text-white">
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[70px]">FECHA</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[130px]">PROVEEDOR</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[90px]">TIPO PAPEL</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[70px]">GRAMAJE</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[60px]">ANCHO</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[80px]">SKU</th>
-                                            <th className="border border-slate-700 p-2 text-center th-resize min-w-[60px]">CORTE</th>
-                                            <th className="border border-blue-600 p-2 text-center bg-blue-600 text-white font-black th-resize min-w-[60px]">KILOS</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[80px]">L.MADRE</th>
-                                            <th className="border border-slate-700 p-2 text-left th-resize min-w-[80px]">L.HIJA</th>
-                                            <th className="border border-slate-700 p-2 text-center min-w-[60px]">ACCIONES</th>
+                        {/* DATA GRID ESTILO SAAS */}
+                        <div className="bg-white shadow-sm border border-slate-200 rounded-3xl overflow-hidden no-print">
+                            <div className={`w-full overflow-x-auto ${activeDropdown ? 'pb-[320px]' : 'pb-0'} transition-all duration-300 ease-in-out`}>
+                                <table className="w-full text-left whitespace-nowrap min-w-max">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">FECHA</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">SKU / ARTÍCULO</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">TIPO DE PAPEL</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">GRAMAJE</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ANCHO ORIG.</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">PROVEEDOR</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-100/50">LOTE PROV.</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-100/50">LOTE PROD.</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ANCHO HIJA</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-indigo-500 uppercase tracking-wider text-center">KILOS</th>
+                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center">ACCIONES</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {rows.map(row => (
-                                            <tr key={row.id} className="border-b border-slate-200 hover:bg-slate-50">
-                                                <td className="border-r border-slate-300 p-0"><input type="date" className="w-full p-2 border-none outline-none text-[10px] bg-transparent" value={row.fecha} onChange={e => updateRow(row.id, 'fecha', e.target.value)} /></td>
-                                                {['proveedor', 'tipo', 'gramaje', 'ancho', 'sku'].map(field => (
-                                                    <td key={field} className="border-r border-slate-300 p-0 relative">
+                                    <tbody className="divide-y divide-slate-100">
+                                        {rows.map((row, index) => (
+                                            <tr key={row.id} className="group hover:bg-slate-50/80 focus-within:bg-indigo-50/30 transition-colors">
+                                                <td className="px-1 py-1">
+                                                    <input type="date" className="w-full h-10 px-2 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none text-[11px] font-medium text-slate-700 bg-transparent transition-all cursor-pointer" value={row.fecha} onChange={e => updateRow(row.id, 'fecha', e.target.value)} />
+                                                </td>
+                                                {['sku', 'tipo', 'gramaje', 'ancho', 'proveedor'].map(field => (
+                                                    <td key={field} className="px-1 py-1 relative">
                                                         <input
-                                                            className={`w-full p-2 border-none outline-none bg-transparent ${field === 'sku' ? 'text-[9px] font-black text-blue-900' : 'text-[10px]'} uppercase`}
+                                                            className={`w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-400 focus:bg-white outline-none bg-transparent transition-all uppercase placeholder-slate-300
+                                                                ${field === 'sku' ? 'text-[12px] font-black text-indigo-900 tracking-tight min-w-[200px]' : 'text-[11px] font-semibold text-slate-700'}
+                                                                ${field === 'proveedor' ? 'bg-slate-50/50 min-w-[150px]' : 'min-w-[120px]'}`}
                                                             value={row[field]}
                                                             onChange={e => updateRow(row.id, field, e.target.value)}
                                                             onFocus={() => setActiveDropdown({ id: row.id, field: field })}
                                                             onBlur={() => setTimeout(() => setActiveDropdown(null), 250)}
-                                                            placeholder={field === 'proveedor' ? "Escribir..." : ""}
+                                                            placeholder={field === 'sku' ? "BUSCAR..." : ""}
                                                         />
                                                         {activeDropdown?.id === row.id && activeDropdown?.field === field && (
-                                                            <div className="absolute z-[999] left-0 top-full mt-1 w-[250px] bg-white border border-slate-400 shadow-2xl max-h-[300px] overflow-y-auto no-print">
+                                                            <div className="absolute z-[999] left-1 top-11 mt-1 w-[360px] bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-indigo-900/10 rounded-xl max-h-[300px] overflow-y-auto no-print">
                                                                 {insumosDB.filter(item => {
-                                                                    const norm = (str) => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                                                                    const norm = (str) => String(str || '').normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toUpperCase();
                                                                     let match = true;
-                                                                    if (row[field]) match = match && norm(item[field]).includes(norm(row[field]));
-                                                                    if (field !== 'proveedor' && row.proveedor) match = match && norm(item.proveedor).includes(norm(row.proveedor));
-                                                                    if (field !== 'proveedor' && field !== 'tipo' && row.tipo) match = match && norm(item.tipo).includes(norm(row.tipo));
+                                                                    const q = norm(row[field]);
+                                                                    if (q) match = match && norm(item[field]).includes(q);
+                                                                    
+                                                                    // Filtro Inteligente cruzado: Si es Proveedor y hay SKU, sugerir solo quienes vendan el SKU
+                                                                    if (field === 'proveedor' && row.sku) {
+                                                                        match = match && norm(item.sku) === norm(row.sku);
+                                                                    }
                                                                     return match;
                                                                 }).filter((item, idx, self) => idx === self.findIndex(t => t[field] === item[field]))
                                                                 .map((item, idx) => (
-                                                                    <div key={idx} className="p-2 hover:bg-blue-100 cursor-pointer border-b border-slate-100" onClick={() => {
-                                                                        if (field === 'proveedor') { updateRow(row.id, 'proveedor', item.proveedor); } else {
-                                                                            updateRow(row.id, 'proveedor', item.proveedor); updateRow(row.id, 'tipo', item.tipo);
-                                                                            updateRow(row.id, 'gramaje', item.gramaje); updateRow(row.id, 'ancho', item.ancho); updateRow(row.id, 'sku', item.sku);
+                                                                    <div key={idx} className="p-3 hover:bg-indigo-50 border-b border-slate-50 cursor-pointer transition-colors" onMouseDown={(e) => {
+                                                                        e.preventDefault(); // Evita que el onBlur se dispare antes del click
+                                                                        if (field === 'proveedor') {
+                                                                            updateRow(row.id, 'proveedor', item.proveedor); 
+                                                                        } else if (field === 'sku' || field === 'tipo') {
+                                                                            updateRow(row.id, 'sku', item.sku); 
+                                                                            updateRow(row.id, 'tipo', item.tipo);
+                                                                            updateRow(row.id, 'gramaje', item.gramaje); 
+                                                                            updateRow(row.id, 'ancho', item.ancho); 
+                                                                            updateRow(row.id, 'proveedor', item.proveedor);
+                                                                        } else {
+                                                                            updateRow(row.id, field, item[field]);
                                                                         }
                                                                         setActiveDropdown(null);
                                                                     }}>
-                                                                        <div className="flex justify-between items-start mb-1"><span className="font-black text-blue-900 text-[11px] uppercase truncate">{item[field]}</span></div>
+                                                                        <div className="flex justify-between items-center mb-1">
+                                                                            <span className="font-extrabold text-indigo-900 text-[12px] uppercase truncate tracking-tight">{item[field]}</span>
+                                                                        </div>
                                                                         {field !== 'proveedor' && (
-                                                                            <div className="text-slate-700 text-[9px] leading-tight flex gap-2 uppercase">
-                                                                                {field !== 'sku' && <span>SKU: <b>{item.sku}</b></span>}
-                                                                                {field !== 'tipo' && <span className="truncate max-w-[150px]">TIPO: <b>{item.tipo}</b></span>}
+                                                                            <div className="text-slate-500 text-[10px] flex flex-col gap-0.5 uppercase mt-1">
+                                                                                <span className="truncate"><b>{item.tipo}</b> - {item.gramaje}g - {item.ancho}mm</span>
+                                                                                <span className="flex items-center gap-1"><Icon name="box" size={10}/> {item.proveedor}</span>
                                                                             </div>
+                                                                        )}
+                                                                        {field === 'proveedor' && (
+                                                                             <div className="text-slate-500 text-[10px] uppercase mt-1">Vendedor habilitado para: {item.sku}</div>
                                                                         )}
                                                                     </div>
                                                                 ))}
@@ -676,46 +709,50 @@
                                                         )}
                                                     </td>
                                                 ))}
-                                                <td className="border-r border-slate-300 p-0"><input className="w-full p-2 border-none outline-none text-center font-bold text-[10px] bg-transparent" value={row.corte} onChange={e => updateRow(row.id, 'corte', e.target.value)} /></td>
-                                                <td className="border-r border-slate-300 p-0 bg-blue-50/50"><input className="w-full p-2.5 border-none outline-none text-center font-black text-blue-900 text-[11px] bg-transparent" placeholder="KILOS..." value={row.kg} onChange={e => updateRow(row.id, 'kg', e.target.value)} /></td>
-                                                <td className="border-r border-slate-300 p-0"><input className="w-full p-2 border-none outline-none font-mono text-[9px] uppercase bg-transparent" value={row.loteMadre} onChange={e => updateRow(row.id, 'loteMadre', e.target.value)} /></td>
-                                                <td className="border-r border-slate-300 p-0"><input className="w-full p-2 border-none outline-none font-mono text-[9px] uppercase bg-transparent" value={row.loteHija} onChange={e => updateRow(row.id, 'loteHija', e.target.value)} /></td>
-                                                <td className="p-1 text-center justify-center items-center h-full no-print bg-slate-100 flex gap-2 border-l border-slate-300">
-                                                    <button onClick={() => handlePreview(row)} className="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-100 p-1.5 rounded" title="Preview"><Icon name="tag" size={14} /></button>
-                                                    <button onClick={() => removeRow(row.id)} className="text-red-500 hover:text-white hover:bg-red-500 bg-red-100 p-1.5 rounded" title="Borrar"><Icon name="trash" size={14} /></button>
+                                                <td className="px-1 py-1 bg-slate-50/50 min-w-[140px]">
+                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none font-mono text-[11px] font-bold text-slate-700 bg-transparent transition-all uppercase placeholder-slate-300" placeholder="-" value={row.loteMadre} onChange={e => updateRow(row.id, 'loteMadre', e.target.value)} />
+                                                </td>
+                                                <td className="px-1 py-1 bg-slate-50/50 min-w-[140px]">
+                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none font-mono text-[11px] font-bold text-slate-700 bg-transparent transition-all uppercase placeholder-slate-300" placeholder="-" value={row.loteHija} onChange={e => updateRow(row.id, 'loteHija', e.target.value)} />
+                                                </td>
+                                                <td className="px-1 py-1 min-w-[100px]">
+                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none text-center font-bold text-[11px] text-slate-700 bg-transparent transition-all placeholder-slate-300" placeholder="-" value={row.corte} onChange={e => updateRow(row.id, 'corte', e.target.value)} />
+                                                </td>
+                                                <td className="px-1 py-1 bg-indigo-50/30 min-w-[100px]">
+                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-500 focus:bg-white outline-none text-center font-black text-indigo-700 text-[13px] bg-transparent transition-all placeholder-indigo-300 shadow-sm" placeholder="KG..." value={row.kg} onChange={e => updateRow(row.id, 'kg', e.target.value)} />
+                                                </td>
+                                                <td className="px-3 py-1">
+                                                    <div className="flex items-center justify-center gap-1 opacity-20 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                                        <button onClick={() => handlePreview(row)} className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Vista Previa PDF"><Icon name="tag" size={16} /></button>
+                                                        <button onClick={() => removeRow(row.id)} className="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Borrar fila"><Icon name="trash" size={16} /></button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
 
-                            <div className="mt-6 flex flex-wrap justify-between items-center bg-slate-50 p-4 border border-slate-200 rounded-xl">
-                                <div className="flex gap-2">
-                                    <button onClick={addRow} className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-900 shadow active:scale-95"><Icon name="plus" /> Añadir Nueva Fila</button>
-                                    <button onClick={sortBobinas} className="bg-white border-2 border-slate-300 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 shadow-sm active:scale-95"><Icon name="sort" /> Agrupar</button>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-sm font-bold text-slate-500 uppercase mr-3">TOTAL CARGADOS:</span>
-                                    <span className="text-3xl font-black text-blue-700 tracking-tighter">{totalKg.toLocaleString('es-AR')} <span className="text-xl">KG</span></span>
-                                </div>
+                        {/* ACCIONES INFERIORES Y TOTAL */}
+                        <div className="mt-8 p-6 lg:p-8 rounded-3xl flex flex-col lg:flex-row justify-between items-center bg-white shadow-xl shadow-slate-200/50 border border-slate-100 gap-6 no-print">
+                            <div className="flex gap-3 w-full lg:w-auto">
+                                <button onClick={addRow} className="flex-1 lg:flex-none bg-indigo-600 text-white px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all text-sm"><Icon name="plus" size={18} /> Añadir Fila</button>
+                                <button onClick={sortBobinas} className="flex-1 lg:flex-none bg-slate-50 border border-slate-200 text-slate-700 px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 active:scale-95 transition-all text-sm"><Icon name="sort" size={18} /> <span className="hidden sm:inline">Agrupar por SKU</span></button>
                             </div>
-
-                            <div className="mt-8 pt-8 border-t-2 border-slate-200 flex justify-end">
-                                <button onClick={() => setShowCloseModal(true)} className="bg-emerald-600 text-white px-8 py-5 rounded-xl font-black flex items-center gap-3 hover:bg-emerald-700 shadow-xl transition-all active:scale-95 text-xl">
-                                    <Icon name="printer" size={28} /> PROCESAR Y DESCARGAR PDFs
+                            <div className="flex items-center gap-6 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 lg:border-l-2 border-slate-100 pt-6 lg:pt-0 lg:pl-6">
+                                <div className="text-right flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TOTAL ACUMULADO</span>
+                                    <span className="text-4xl font-black text-indigo-900 tracking-tighter leading-none mt-1">{totalKg.toLocaleString('es-AR')} <span className="text-2xl text-indigo-400">KG</span></span>
+                                </div>
+                                <button onClick={() => setShowCloseModal(true)} className="bg-emerald-500 text-white px-8 py-5 rounded-2xl font-black flex justify-center items-center gap-3 hover:bg-emerald-600 shadow-2xl shadow-emerald-500/40 transition-all active:scale-95 text-lg">
+                                    <Icon name="printer" size={24} /> PROCESAR PDFs
                                 </button>
                             </div>
                         </div>
-
-                        {/* RENDER NATIVO PDF OCULTO */}
-                        <div id="labels-print-container" className="hidden">
-                            {rows.filter(r => r.proveedor || r.kg).map(row => (
-                                <BobinaLabel key={`print-${row.id}`} row={row} empresa={empresa} formatDateDisplay={formatDateDisplay} />
-                            ))}
-                        </div>
                     </div>
                 </div>
+            );
             );
         };
 
