@@ -262,8 +262,8 @@
 
             const [showCloseModal, setShowCloseModal] = useState(false);
             const [isAutoLoadingDB, setIsAutoLoadingDB] = useState(true);
+            const [showHelp, setShowHelp] = useState(false);
 
-            // Funciones de audio
             const playSuccessSound = () => {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
@@ -276,201 +276,105 @@
 
             const [rows, setRows] = useState(() => {
                 const saved = localStorage.getItem('molderilRows');
-                if (saved) {
-                    try { 
-                        const parsed = JSON.parse(saved); 
-                        if (Array.isArray(parsed)) return parsed;
-                    } catch (e) {}
-                }
-                return [{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }];
+                if (saved) { try { const p = JSON.parse(saved); if (Array.isArray(p)) return p; } catch (e) {} }
+                return [];
             });
+
+            const getNewFormData = () => ({ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' });
+            const [formData, setFormData] = useState(getNewFormData());
+            const [editingId, setEditingId] = useState(null);
 
             const [activeDropdown, setActiveDropdown] = useState(null);
             const [isRelabelScanning, setIsRelabelScanning] = useState(false);
             const [previewRow, setPreviewRow] = useState(null);
             const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
-
             const [insumosDB, setInsumosDB] = useState([]);
-
             const scannerRefRelabel = useRef(null);
             const lastRelabelScannedTime = useRef(0);
 
             const formatDateDisplay = (dateStr) => {
                 if (!dateStr) return '--/--/----';
-                const [year, month, day] = dateStr.split('-');
-                return `${day}/${month}/${year}`;
+                const [y, m, d] = dateStr.split('-');
+                return `${d}/${m}/${y}`;
             };
             const unformatDateDisplay = (displayStr) => {
                 if (!displayStr || displayStr.includes('--')) return today;
-                const [day, month, year] = displayStr.split('/');
-                return `${year}-${month}-${day}`;
+                const [d, m, y] = displayStr.split('/');
+                return `${y}-${m}-${d}`;
             };
 
-            // Auto-guardado
             useEffect(() => { localStorage.setItem('molderilRows', JSON.stringify(rows)); }, [rows]);
 
-            // Auto-cargado de BOBINAS.xlsx
             useEffect(() => {
                 const cargarBaseDatosAutomatica = async () => {
                     try {
                         const response = await fetch('./BOBINAS.xlsx');
                         if (!response.ok) throw new Error("No se pudo hallar archivo");
                         const arrayBuffer = await response.arrayBuffer();
-                        const dataBytes = new Uint8Array(arrayBuffer);
-                        const wb = XLSX.read(dataBytes, { type: 'array' });
+                        const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
                         const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
                         const parsed = [];
                         for (let i = 1; i < data.length; i++) {
-                            const rowData = data[i];
-                            if (Array.isArray(rowData) && rowData.join("").trim() !== "") {
+                            const r = data[i];
+                            if (Array.isArray(r) && r.join("").trim() !== "") {
                                 parsed.push({
-                                    proveedor: String(rowData[0] || '').trim().toUpperCase(),
-                                    sku: String(rowData[1] || '').trim().toUpperCase(),
-                                    tipo: String(rowData[2] || '').trim().toUpperCase(),
-                                    gramaje: String(rowData[3] || '').trim().toUpperCase(),
-                                    ancho: String(rowData[4] || '').trim().toUpperCase()
+                                    proveedor: String(r[0] || '').trim().toUpperCase(),
+                                    sku: String(r[1] || '').trim().toUpperCase(),
+                                    tipo: String(r[2] || '').trim().toUpperCase(),
+                                    gramaje: String(r[3] || '').trim().toUpperCase(),
+                                    ancho: String(r[4] || '').trim().toUpperCase()
                                 });
                             }
                         }
-                        if (parsed.length > 0) {
-                            setInsumosDB(parsed);
-                            console.log("Base cargada automáticamente:", parsed.length, "ítems");
-                        }
-                    } catch (error) {
-                        console.warn("Autocarga excel fallida. Usar botón manual.", error);
-                    } finally {
-                        setIsAutoLoadingDB(false);
-                    }
+                        if (parsed.length > 0) setInsumosDB(parsed);
+                    } catch (error) { console.warn("E"); } finally { setIsAutoLoadingDB(false); }
                 };
                 cargarBaseDatosAutomatica();
             }, []);
 
-            const totalKg = useMemo(() => (Array.isArray(rows) ? rows : []).reduce((acc, r) => acc + (parseFloat(String((r && r.kg) || '').replace(',', '.')) || 0), 0), [rows]);
+            const totalKg = useMemo(() => rows.reduce((acc, r) => acc + (parseFloat(String((r && r.kg) || '').replace(',', '.')) || 0), 0), [rows]);
 
-            const subtotalesPorSKU = useMemo(() => {
-                const map = {};
-                (Array.isArray(rows) ? rows : []).forEach(r => {
-                    if (!r || !r.kg) return;
-                    const key = r.sku || 'Sin SKU';
-                    if (!map[key]) map[key] = { sku: key, proveedor: r.proveedor, tipo: r.tipo, count: 0, kg: 0 };
-                    map[key].count += 1;
-                    map[key].kg += (parseFloat(String(r.kg || '').replace(',', '.')) || 0);
-                });
-                return Object.values(map).sort((a, b) => a.sku.localeCompare(b.sku));
-            }, [rows]);
-
-            const updateRow = (id, field, value) => {
+            const updateField = (field, value) => {
                 const upperValue = (typeof value === 'string' && field !== 'fecha') ? value.toUpperCase() : value;
-                setRows(prevRows => prevRows.map(r => r.id === id ? { ...r, [field]: upperValue } : r));
+                setFormData(prev => ({ ...prev, [field]: upperValue }));
             };
 
-            const addRow = () => setRows([...rows, { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]);
-            const removeRow = (id) => { 
-                if (rows.length > 1) setRows(rows.filter(r => r.id !== id));
-                else setRows([{ id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: '' }]);
+            const submitForm = () => {
+                if (!formData.kg || !formData.tipo) { alert("Completa Tipo y KG."); return; }
+                if (editingId) {
+                    setRows(prev => prev.map(r => r.id === editingId ? formData : r));
+                    setEditingId(null);
+                } else {
+                    setRows([...rows, formData]);
+                }
+                setFormData(getNewFormData());
             };
 
-            const sortBobinas = () => {
-                const sorted = [...rows].sort((a, b) => {
-                    const skuA = (a.sku || '').toLowerCase(); const skuB = (b.sku || '').toLowerCase();
-                    if (skuA < skuB) return -1; if (skuA > skuB) return 1;
-                    const loteA = (a.loteHija || '').toLowerCase(); const loteB = (b.loteHija || '').toLowerCase();
-                    if (loteA < loteB) return -1; if (loteA > loteB) return 1;
-                    return 0;
-                });
-                setRows(sorted);
-            };
-
-            const handleFileUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    try {
-                        const dataBytes = new Uint8Array(evt.target.result);
-                        const wb = XLSX.read(dataBytes, { type: 'array' });
-                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
-                        const parsed = [];
-                        for (let i = 1; i < data.length; i++) {
-                            const rowData = data[i];
-                            if (Array.isArray(rowData) && rowData.join("").trim() !== "") {
-                                parsed.push({
-                                    proveedor: String(rowData[0] || '').trim().toUpperCase(),
-                                    sku: String(rowData[1] || '').trim().toUpperCase(),
-                                    tipo: String(rowData[2] || '').trim().toUpperCase(),
-                                    gramaje: String(rowData[3] || '').trim().toUpperCase(),
-                                    ancho: String(rowData[4] || '').trim().toUpperCase()
-                                });
-                            }
-                        }
-                        if (parsed.length > 0) { setInsumosDB(parsed); alert(`Se cargaron ${parsed.length} insumos mediante el botón manual.`); }
-                    } catch (error) { alert("Error al leer el Excel."); }
-                    e.target.value = null;
-                };
-                reader.readAsArrayBuffer(file);
-            };
-
-            const exportarProyecto = () => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rows));
-                const a = document.createElement('a');
-                a.setAttribute("href", dataStr);
-                a.setAttribute("download", `Proyecto_Ingresos_${formatDateDisplay(today).replace(/\//g, '-')}.json`);
-                document.body.appendChild(a); a.click(); a.remove();
-            };
-
-            const importarProyecto = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    try {
-                        const imported = JSON.parse(evt.target.result);
-                        const sanitized = imported.map(r => ({ ...r, uid: r.uid || generateUID() }));
-                        if (Array.isArray(sanitized)) { setRows(sanitized); alert("Lista cargada."); }
-                    } catch (error) { alert("Archivo inválido."); }
-                    e.target.value = null;
-                };
-                reader.readAsText(file);
-            };
+            const cancelEdit = () => { setEditingId(null); setFormData(getNewFormData()); };
+            const removeRow = (id) => { setRows(prev => prev.filter(r => r.id !== id)); if (editingId === id) cancelEdit(); };
+            const startEdit = (row) => { setEditingId(row.id); setFormData(row); document.querySelector('main').scrollTop = 0; };
 
             const procesarCierreLista = () => {
-                const validRows = rows.filter(r => r.proveedor || r.kg);
-                if (validRows.length === 0) { alert("La planilla está vacía."); setShowCloseModal(false); return; }
-
-                const invalidRows = validRows.filter(r => !r.proveedor || !r.kg || !r.tipo);
-                if (invalidRows.length > 0) {
-                    alert(`Hay ${invalidRows.length} fila(s) incompleta(s). Completa Proveedor, Tipo y Kg.`);
-                    setShowCloseModal(false); return;
-                }
-
+                if (rows.length === 0) { alert("Vacía"); setShowCloseModal(false); return; }
                 setShowCloseModal(false);
-
                 setTimeout(async () => {
                     try {
-                        // Dibujo Nativo de etiquetas
-                        for (let i = 0; i < validRows.length; i++) {
-                            const row = validRows[i];
-                            doc.addPage('a4', 'portrait');
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        for (let i = 0; i < rows.length; i++) {
+                            if(i>0) doc.addPage('a4', 'portrait');
+                            const row = rows[i];
                             const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
                             await drawBobinaLabelNative(doc, row, empresa, qrData);
                         }
-
                         doc.save(`Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
-                        
-                    } catch (err) {
-                        console.error(err); alert("Hubo un error al generar el PDF.");
-                    }
+                    } catch (err) {}
                 }, 100);
             };
 
             const closeRelabelScanner = () => {
                 if (scannerRefRelabel.current) {
-                    scannerRefRelabel.current.clear().then(() => {
-                        scannerRefRelabel.current = null; setIsRelabelScanning(false);
-                    }).catch(() => {
-                        scannerRefRelabel.current = null; setIsRelabelScanning(false);
-                    });
-                } else { setIsRelabelScanning(false); }
+                    scannerRefRelabel.current.clear().then(() => { scannerRefRelabel.current = null; setIsRelabelScanning(false); }).catch(() => { scannerRefRelabel.current = null; setIsRelabelScanning(false); });
+                } else setIsRelabelScanning(false);
             };
 
             useEffect(() => {
@@ -480,7 +384,6 @@
                         (decodedText) => {
                             if (Date.now() - lastRelabelScannedTime.current < 2000) return;
                             lastRelabelScannedTime.current = Date.now();
-
                             if (decodedText.startsWith("MOLDERIL SA")) {
                                 const parts = decodedText.split(" | ");
                                 let newRow = { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: 'Re-etiquetado' };
@@ -494,7 +397,6 @@
                                     if (p.startsWith("SKU: ")) newRow.sku = p.replace("SKU: ", "");
                                     if (p.startsWith("GRAMAJE: ")) newRow.gramaje = p.replace("GRAMAJE: ", "");
                                     if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
-                                    if (p.startsWith("FECHA: ")) newRow.fecha = unformatDateDisplay(p.replace("FECHA: ", ""));
                                 });
                                 setRows(prev => [...prev, newRow]);
                                 playSuccessSound(); closeRelabelScanner();
@@ -505,254 +407,210 @@
             }, [isRelabelScanning]);
 
             const handlePreview = (row) => {
-                setPreviewRow(row);
-                setPreviewPdfUrl(null);
+                setPreviewRow(row); setPreviewPdfUrl(null);
                 setTimeout(async () => {
                     try {
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
                         const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
                         await drawBobinaLabelNative(doc, row, empresa, qrData);
                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-                    } catch (err) { console.error("Error al previsualizar", err); }
+                    } catch (err) {}
                 }, 100);
+            };
+            const exportarProyecto = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rows));
+                const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", `Proyecto_${today.replace(/\//g, '-')}.json`);
+                document.body.appendChild(a); a.click(); a.remove();
+            };
+            const importarProyecto = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try { const imp = JSON.parse(evt.target.result); if(Array.isArray(imp)) setRows(imp); } catch (e) {}
+                    e.target.value = null;
+                }; reader.readAsText(file);
             };
 
             return (
-                <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-                    {/* MODAL CERRAR LISTA (Procesar PDF) */}
-                    {showCloseModal && (
-                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4 no-print transition-all">
-                            <div className="bg-white p-8 rounded-3xl w-full max-w-lg text-center shadow-2xl border border-slate-200">
-                                <div className="bg-emerald-100 text-emerald-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <Icon name="printer" size={40} />
-                                </div>
-                                <h3 className="font-black text-2xl tracking-tight text-slate-900 mb-3">Emitir Pallet y Rótulos</h3>
-                                <p className="text-slate-500 mb-8 font-medium">
-                                    Esta acción agrupará las bobinas en un PDF de alta calidad listo para imprimir. Recibirás tu hoja A4 de resumen y los rótulos individuales a pegar.
-                                </p>
-                                <div className="flex gap-4">
-                                    <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-100 text-slate-700 px-5 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
-                                    <button onClick={procesarCierreLista} className="flex-1 bg-emerald-600 text-white px-5 py-4 rounded-2xl font-bold hover:bg-emerald-700 shadow-xl shadow-emerald-600/30 transition-all active:scale-95">Confirmar e Imprimir</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+<div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
+    {showHelp && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+            <div className="bg-white p-8 rounded-3xl w-full max-w-lg shadow-2xl">
+                <h3 className="font-black text-2xl mb-4">Manual de Ayuda</h3>
+                <ul className="space-y-4 text-slate-600 font-medium"><li>Formulario Maestro: editas arriba y guardas en la grilla abajo.</li></ul>
+                <button onClick={() => setShowHelp(false)} className="mt-8 bg-slate-900 text-white w-full py-4 rounded-xl font-bold">Cerrar Ayuda</button>
+            </div>
+        </div>
+    )}
+    {showCloseModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+            <div className="bg-white p-8 rounded-3xl w-full max-w-lg text-center shadow-2xl">
+                <h3 className="font-black text-2xl text-slate-900 mb-3">Emitir Pallet y Rótulos</h3>
+                <div className="flex gap-4 mt-8">
+                    <button onClick={() => setShowCloseModal(false)} className="flex-1 bg-slate-100 px-5 py-4 rounded-xl font-bold">Cancelar</button>
+                    <button onClick={procesarCierreLista} className="flex-1 bg-emerald-600 text-white px-5 py-4 rounded-xl font-bold">Imprimir PDF</button>
+                </div>
+            </div>
+        </div>
+    )}
+    {previewRow && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+            <div className="bg-white p-4 rounded-3xl w-full max-w-[220mm] h-[90vh] flex flex-col shadow-2xl">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-extrabold text-lg text-slate-800">Vista Previa</h3>
+                    <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-slate-200 w-10 h-10 rounded-xl font-bold">✕</button>
+                </div>
+                {previewPdfUrl ? <iframe src={previewPdfUrl} className="w-full h-full rounded-xl" title="Preview"></iframe> : <div>Cargando...</div>}
+            </div>
+        </div>
+    )}
+    {isRelabelScanning && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+            <div className="bg-white p-6 rounded-3xl w-full max-w-md text-center shadow-2xl">
+                <h3 className="font-black text-xl mb-2">Escanear QR</h3>
+                <div id="reader-relabel" className="w-full rounded-2xl overflow-hidden border-2 border-indigo-100"></div>
+                <button onClick={closeRelabelScanner} className="mt-6 bg-slate-100 py-4 w-full rounded-xl font-bold">Cancelar</button>
+            </div>
+        </div>
+    )}
+    
+    <aside className="w-64 bg-slate-900 shadow-2xl flex-shrink-0 flex flex-col no-print text-slate-300">
+        <div className="p-6 border-b border-slate-800">
+            <h1 className="text-white text-xl font-black uppercase tracking-tight">{empresa}</h1>
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-widest mt-1">Recepción</p>
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold"><Icon name="box" size={20} /> Ingreso Bobinas</a>
+            <a href="index.html" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-medium"><Icon name="arrowLeft" size={20} /> Salir al Menú</a>
+        </nav>
+        <div className="p-4 border-t border-slate-800"><button onClick={() => setShowHelp(true)} className="flex items-center gap-3 px-4 py-3 w-full hover:bg-slate-800 rounded-xl font-medium"><Icon name="tag" size={20} /> Ayuda</button></div>
+    </aside>
 
-                    {/* NAVBAR (Sleek SaaS style) */}
-                    <nav className="bg-slate-900 shadow-md px-6 py-4 no-print flex justify-between items-center sm:sticky top-0 z-40 border-b border-slate-800">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400">
-                                <Icon name="box" size={24} />
-                            </div>
-                            <div>
-                                <span className="text-white text-lg font-black tracking-tight uppercase block leading-none">Recepción Logística</span>
-                                <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">{empresa}</span>
-                            </div>
-                        </div>
-                        <a href="index.html" className="text-slate-300 hover:text-white font-semibold text-sm bg-slate-800/50 hover:bg-slate-800 px-5 py-2.5 rounded-xl flex items-center gap-2 border border-slate-700 hover:border-slate-600 transition-all">
-                            <Icon name="arrowLeft" size={16} /> <span className="hidden sm:inline">Volver al Menú</span>
-                        </a>
-                    </nav>
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="bg-white border-b border-slate-200 px-8 py-5 flex justify-between items-center no-print z-10">
+            <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-black text-slate-800">Panel de Carga</h2>
+                {!isAutoLoadingDB && insumosDB.length === 0 && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-300">⚠️ Falta Base datos Excel</span>}
+            </div>
+            <div className="flex gap-3">
+                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
+                <button onClick={() => document.getElementById('json-upload').click()} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm"><Icon name="folder" size={16}/> Sesión</button>
+                <button onClick={exportarProyecto} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm"><Icon name="save" size={16}/> Guardar</button>
+            </div>
+        </header>
 
-                    <div className="max-w-[320mm] mx-auto p-4 sm:p-6 lg:p-8">
-                        {/* PREVIEW */}
-                        {previewRow && (
-                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4 no-print">
-                                <div className="bg-slate-100 p-2 sm:p-4 rounded-3xl w-full max-w-[220mm] h-[90vh] flex flex-col relative shadow-2xl overflow-hidden border border-slate-300">
-                                    <div className="flex justify-between items-center mb-3 bg-white p-4 rounded-2xl shadow-sm">
-                                        <h3 className="font-extrabold text-lg text-slate-800 uppercase flex items-center gap-2 tracking-tight"><Icon name="tag" /> Vista Previa del Rótulo</h3>
-                                        <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-slate-900 w-10 h-10 rounded-xl font-bold flex items-center justify-center transition-colors">✕</button>
-                                    </div>
-                                    <div className="flex-1 w-full bg-slate-200/50 rounded-2xl overflow-hidden relative flex justify-center items-center">
-                                        {previewPdfUrl ? (
-                                            <iframe src={previewPdfUrl} className="w-full h-full border-none rounded-xl" title="Preview"></iframe>
-                                        ) : (
-                                            <div className="flex flex-col items-center text-indigo-600 animate-pulse">
-                                                <Icon name="printer" size={48} className="mb-4 opacity-50" />
-                                                <span className="font-bold tracking-tight">Procesando vectores PDF...</span>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-8 pb-10">
+                <div className={`bg-white rounded-3xl shadow-xl border p-6 relative transition-all ${editingId ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                        <h3 className="font-black text-xl text-indigo-900 flex items-center gap-2">
+                            <Icon name={editingId ? "edit" : "plus"} size={24} /> {editingId ? "Editando Bobina Seleccionada" : "Nueva Bobina (Carga Rápida)"}
+                        </h3>
+                        <div className="flex items-center gap-4">
+                            <input type="date" className="bg-slate-50 outline-none text-sm font-bold text-slate-600 rounded-lg px-3 py-2 cursor-pointer" value={formData.fecha} onChange={e => updateField('fecha', e.target.value)} />
+                            <button onClick={() => setIsRelabelScanning(true)} className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-emerald-800 text-sm">
+                                <Icon name="camera" size={16}/> Re-Etiquetar
+                            </button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 relative">
+                        <div className="xl:col-span-5 space-y-4">
+                            <div className="relative">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU / Artículo</label>
+                                <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-black text-indigo-900 bg-slate-50" value={formData.sku} onChange={e => updateField('sku', e.target.value)} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..."/>
+                                {activeDropdown === 'sku' && (
+                                    <div className="absolute z-[9999] top-full left-0 mt-2 w-[450px] bg-white border shadow-2xl rounded-2xl max-h-[300px] overflow-y-auto overflow-x-hidden">
+                                        <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-900 border-b">Catálogo de Excel ({insumosDB.length})</div>
+                                        {insumosDB.filter(item => {
+                                            const norm = str => String(str||'').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+                                            return formData.sku ? norm(item.sku).includes(norm(formData.sku)) : true;
+                                        }).filter((item, idx, self) => idx === self.findIndex(t => t.sku === item.sku))
+                                        .map((item, idx) => (
+                                            <div key={idx} className="p-4 hover:bg-slate-50 border-b cursor-pointer w-full text-left" onMouseDown={(e) => { e.preventDefault(); updateField('sku', item.sku); updateField('tipo', item.tipo); updateField('gramaje', item.gramaje); updateField('ancho', item.ancho); updateField('proveedor', item.proveedor); setActiveDropdown(null); }}>
+                                                <div className="font-black text-slate-900 text-sm">{item.sku}</div>
+                                                <div className="text-slate-600 text-xs">{item.tipo} | {item.gramaje}g | {item.ancho}mm</div>
                                             </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* RE-ETIQUETAR MODAL */}
-                        {isRelabelScanning && (
-                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4 no-print">
-                                <div className="bg-white p-6 rounded-3xl w-full max-w-md text-center shadow-2xl border border-slate-200">
-                                    <div className="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Icon name="camera" size={32} />
-                                    </div>
-                                    <h3 className="font-black text-xl tracking-tight mb-2">Escanear Rótulo Original</h3>
-                                    <p className="text-slate-500 mb-6 text-sm font-medium">Apunta con tu cámara al código QR impreso en el papel averiado para clonar sus datos a una nueva fila.</p>
-                                    <div id="reader-relabel" className="w-full rounded-2xl overflow-hidden border-2 border-indigo-100"></div>
-                                    <button onClick={closeRelabelScanner} className="mt-6 bg-slate-100 text-slate-700 hover:bg-slate-200 px-6 py-4 rounded-2xl font-bold w-full transition-colors">Cancelar Módulo</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* CONTROLES TOP (DASHBOARD HEADER) */}
-                        <div className="mb-6 flex flex-wrap gap-4 items-center justify-between no-print">
-                            <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
-                                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
-                                <button onClick={() => document.getElementById('json-upload').click()} className="text-slate-600 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 hover:text-slate-900 text-sm transition-colors">
-                                    <Icon name="folder" /> <span className="hidden sm:inline">Cargar Sesión</span>
-                                </button>
-                                <div className="w-px h-6 bg-slate-200"></div>
-                                <button onClick={() => setIsRelabelScanning(true)} className="text-indigo-600 bg-indigo-50 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-100 text-sm transition-colors">
-                                    <Icon name="camera" /> Copiar Rótulo
-                                </button>
-                                {isAutoLoadingDB && <span className="text-xs font-bold text-amber-500 animate-pulse ml-2 px-3">Cargando base...</span>}
-                                {insumosDB.length === 0 && !isAutoLoadingDB && (
-                                    <div className="ml-2">
-                                        <input type="file" id="excel-upload" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
-                                        <button onClick={() => document.getElementById('excel-upload').click()} className="px-4 py-2 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center gap-2">
-                                            ⚠️ Cargar Insumos Manualmente
-                                        </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>
-
-                            <div className="flex gap-3">
-                                <button onClick={exportarProyecto} className="bg-white border text-slate-700 px-4 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-50 shadow-sm transition-colors text-sm">
-                                    <Icon name="save" /> Descargar Avance
-                                </button>
-                                <button onClick={() => { if (window.confirm("¿Seguro de descartar tu progreso permanentemente?")) { localStorage.removeItem('molderilRows'); window.location.reload(); } }} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-100 transition-colors text-sm">
-                                    <Icon name="trash" /> Borrar Caché
-                                </button>
+                            <div>
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Descripción de Papel</label>
+                                <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-bold text-slate-700 uppercase" value={formData.tipo} onChange={e => updateField('tipo', e.target.value)} onFocus={() => setActiveDropdown('tipo')}/>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Gramaje</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 outline-none font-bold uppercase" value={formData.gramaje} onChange={e => updateField('gramaje', e.target.value)} /></div>
+                                <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Ancho Orig.</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 outline-none font-bold uppercase" value={formData.ancho} onChange={e => updateField('ancho', e.target.value)} /></div>
                             </div>
                         </div>
 
-                        {/* DATA GRID ESTILO SAAS */}
-                        <div className="bg-white shadow-sm border border-slate-200 rounded-3xl overflow-hidden no-print">
-                            <div className={`w-full overflow-x-auto ${activeDropdown ? 'pb-[320px]' : 'pb-0'} transition-all duration-300 ease-in-out`}>
-                                <table className="w-full text-left whitespace-nowrap min-w-max">
-                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                        <tr>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">FECHA</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">SKU / ARTÍCULO</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">TIPO DE PAPEL</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">GRAMAJE</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ANCHO ORIG.</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">PROVEEDOR</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-100/50">LOTE PROV.</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-100/50">LOTE PROD.</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ANCHO HIJA</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-indigo-500 uppercase tracking-wider text-center">KILOS</th>
-                                            <th className="px-3 py-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center">ACCIONES</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {rows.map((row, index) => (
-                                            <tr key={row.id} className="group hover:bg-slate-50/80 focus-within:bg-indigo-50/30 transition-colors">
-                                                <td className="px-1 py-1">
-                                                    <input type="date" className="w-full h-10 px-2 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none text-[11px] font-medium text-slate-700 bg-transparent transition-all cursor-pointer" value={row.fecha} onChange={e => updateRow(row.id, 'fecha', e.target.value)} />
-                                                </td>
-                                                {['sku', 'tipo', 'gramaje', 'ancho', 'proveedor'].map(field => (
-                                                    <td key={field} className="px-1 py-1 relative">
-                                                        <input
-                                                            className={`w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-400 focus:bg-white outline-none bg-transparent transition-all uppercase placeholder-slate-300
-                                                                ${field === 'sku' ? 'text-[12px] font-black text-indigo-900 tracking-tight min-w-[200px]' : 'text-[11px] font-semibold text-slate-700'}
-                                                                ${field === 'proveedor' ? 'bg-slate-50/50 min-w-[150px]' : 'min-w-[120px]'}`}
-                                                            value={row[field]}
-                                                            onChange={e => updateRow(row.id, field, e.target.value)}
-                                                            onFocus={() => setActiveDropdown({ id: row.id, field: field })}
-                                                            onBlur={() => setTimeout(() => setActiveDropdown(null), 250)}
-                                                            placeholder={field === 'sku' ? "BUSCAR..." : ""}
-                                                        />
-                                                        {activeDropdown?.id === row.id && activeDropdown?.field === field && (
-                                                            <div className="absolute z-[999] left-1 top-11 mt-1 w-[360px] bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-indigo-900/10 rounded-xl max-h-[300px] overflow-y-auto no-print">
-                                                                {insumosDB.filter(item => {
-                                                                    const norm = (str) => String(str || '').normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toUpperCase();
-                                                                    let match = true;
-                                                                    const q = norm(row[field]);
-                                                                    if (q) match = match && norm(item[field]).includes(q);
-                                                                    
-                                                                    // Filtro Inteligente cruzado: Si es Proveedor y hay SKU, sugerir solo quienes vendan el SKU
-                                                                    if (field === 'proveedor' && row.sku) {
-                                                                        match = match && norm(item.sku) === norm(row.sku);
-                                                                    }
-                                                                    return match;
-                                                                }).filter((item, idx, self) => idx === self.findIndex(t => t[field] === item[field]))
-                                                                .map((item, idx) => (
-                                                                    <div key={idx} className="p-3 hover:bg-indigo-50 border-b border-slate-50 cursor-pointer transition-colors" onMouseDown={(e) => {
-                                                                        e.preventDefault(); // Evita que el onBlur se dispare antes del click
-                                                                        if (field === 'proveedor') {
-                                                                            updateRow(row.id, 'proveedor', item.proveedor); 
-                                                                        } else if (field === 'sku' || field === 'tipo') {
-                                                                            updateRow(row.id, 'sku', item.sku); 
-                                                                            updateRow(row.id, 'tipo', item.tipo);
-                                                                            updateRow(row.id, 'gramaje', item.gramaje); 
-                                                                            updateRow(row.id, 'ancho', item.ancho); 
-                                                                            updateRow(row.id, 'proveedor', item.proveedor);
-                                                                        } else {
-                                                                            updateRow(row.id, field, item[field]);
-                                                                        }
-                                                                        setActiveDropdown(null);
-                                                                    }}>
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="font-extrabold text-indigo-900 text-[12px] uppercase truncate tracking-tight">{item[field]}</span>
-                                                                        </div>
-                                                                        {field !== 'proveedor' && (
-                                                                            <div className="text-slate-500 text-[10px] flex flex-col gap-0.5 uppercase mt-1">
-                                                                                <span className="truncate"><b>{item.tipo}</b> - {item.gramaje}g - {item.ancho}mm</span>
-                                                                                <span className="flex items-center gap-1"><Icon name="box" size={10}/> {item.proveedor}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {field === 'proveedor' && (
-                                                                             <div className="text-slate-500 text-[10px] uppercase mt-1">Vendedor habilitado para: {item.sku}</div>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                ))}
-                                                <td className="px-1 py-1 bg-slate-50/50 min-w-[140px]">
-                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none font-mono text-[11px] font-bold text-slate-700 bg-transparent transition-all uppercase placeholder-slate-300" placeholder="-" value={row.loteMadre} onChange={e => updateRow(row.id, 'loteMadre', e.target.value)} />
-                                                </td>
-                                                <td className="px-1 py-1 bg-slate-50/50 min-w-[140px]">
-                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none font-mono text-[11px] font-bold text-slate-700 bg-transparent transition-all uppercase placeholder-slate-300" placeholder="-" value={row.loteHija} onChange={e => updateRow(row.id, 'loteHija', e.target.value)} />
-                                                </td>
-                                                <td className="px-1 py-1 min-w-[100px]">
-                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-300 focus:bg-white outline-none text-center font-bold text-[11px] text-slate-700 bg-transparent transition-all placeholder-slate-300" placeholder="-" value={row.corte} onChange={e => updateRow(row.id, 'corte', e.target.value)} />
-                                                </td>
-                                                <td className="px-1 py-1 bg-indigo-50/30 min-w-[100px]">
-                                                    <input className="w-full h-10 px-3 rounded-lg border-2 border-transparent focus:border-indigo-500 focus:bg-white outline-none text-center font-black text-indigo-700 text-[13px] bg-transparent transition-all placeholder-indigo-300 shadow-sm" placeholder="KG..." value={row.kg} onChange={e => updateRow(row.id, 'kg', e.target.value)} />
-                                                </td>
-                                                <td className="px-3 py-1">
-                                                    <div className="flex items-center justify-center gap-1 opacity-20 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                                                        <button onClick={() => handlePreview(row)} className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors" title="Vista Previa PDF"><Icon name="tag" size={16} /></button>
-                                                        <button onClick={() => removeRow(row.id)} className="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Borrar fila"><Icon name="trash" size={16} /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                        <div className="xl:col-span-4 space-y-4">
+                            <div className="relative">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Proveedor Oficial</label>
+                                <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.proveedor} onChange={e => updateField('proveedor', e.target.value)} onFocus={() => setActiveDropdown('proveedor')}/>
+                                {activeDropdown === 'proveedor' && (
+                                    <div className="absolute z-[9999] top-full left-0 mt-2 w-full bg-white shadow-2xl rounded-xl max-h-[250px] overflow-y-auto border">
+                                        {insumosDB.filter((item, idx, self) => idx === self.findIndex(t => t.proveedor === item.proveedor)).map((item, idx) => (
+                                            <div key={idx} className="p-3 hover:bg-slate-100 cursor-pointer font-bold uppercase text-sm border-b" onMouseDown={(e) => { e.preventDefault(); updateField('proveedor', item.proveedor); setActiveDropdown(null); }}>{item.proveedor}</div>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </div>
+                                )}
                             </div>
+                            <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Lote Prov. (Fábrica)</label><input className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold uppercase" value={formData.loteMadre} onChange={e => updateField('loteMadre', e.target.value)} /></div>
+                            <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Lote Prod. (Molderil)</label><input className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold uppercase" value={formData.loteHija} onChange={e => updateField('loteHija', e.target.value)} /></div>
                         </div>
 
-                        {/* ACCIONES INFERIORES Y TOTAL */}
-                        <div className="mt-8 p-6 lg:p-8 rounded-3xl flex flex-col lg:flex-row justify-between items-center bg-white shadow-xl shadow-slate-200/50 border border-slate-100 gap-6 no-print">
-                            <div className="flex gap-3 w-full lg:w-auto">
-                                <button onClick={addRow} className="flex-1 lg:flex-none bg-indigo-600 text-white px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all text-sm"><Icon name="plus" size={18} /> Añadir Fila</button>
-                                <button onClick={sortBobinas} className="flex-1 lg:flex-none bg-slate-50 border border-slate-200 text-slate-700 px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 active:scale-95 transition-all text-sm"><Icon name="sort" size={18} /> <span className="hidden sm:inline">Agrupar por SKU</span></button>
-                            </div>
-                            <div className="flex items-center gap-6 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 lg:border-l-2 border-slate-100 pt-6 lg:pt-0 lg:pl-6">
-                                <div className="text-right flex flex-col">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TOTAL ACUMULADO</span>
-                                    <span className="text-4xl font-black text-indigo-900 tracking-tighter leading-none mt-1">{totalKg.toLocaleString('es-AR')} <span className="text-2xl text-indigo-400">KG</span></span>
-                                </div>
-                                <button onClick={() => setShowCloseModal(true)} className="bg-emerald-500 text-white px-8 py-5 rounded-2xl font-black flex justify-center items-center gap-3 hover:bg-emerald-600 shadow-2xl shadow-emerald-500/40 transition-all active:scale-95 text-lg">
-                                    <Icon name="printer" size={24} /> PROCESAR PDFs
-                                </button>
-                            </div>
+                        <div className="xl:col-span-3 flex flex-col justify-end bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                             <div className="mb-4"><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 text-center">Ancho Hija (Corte mm)</label><input className="w-full h-12 text-center font-bold text-lg rounded-xl border-2 border-indigo-100 outline-none" placeholder="Opcional" value={formData.corte} onChange={e => updateField('corte', e.target.value)} /></div>
+                            <div><label className="block text-xs font-black text-indigo-600 uppercase tracking-widest mb-2 text-center">PESO NETO</label><div className="relative"><input className="w-full h-16 text-center font-black text-indigo-700 text-3xl rounded-xl border-2 border-indigo-400 outline-none pr-10" placeholder="0.00" value={formData.kg} onChange={e => updateField('kg', e.target.value)} /><span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-indigo-400 text-lg">KG</span></div></div>
                         </div>
                     </div>
+
+                    <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
+                        {editingId && <button onClick={cancelEdit} className="px-6 py-4 rounded-xl font-bold bg-slate-100">Cancelar</button>}
+                        <button onClick={() => setFormData(getNewFormData())} className="px-6 py-4 rounded-xl font-bold border border-slate-200">Limpiar</button>
+                        <button onClick={submitForm} className={`px-10 py-4 rounded-xl font-black text-white shadow-xl text-lg flex gap-2 ${editingId ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name={editingId ? "save" : "plus"} size={20} />{editingId ? "Actualizar Fila" : "Agregar a la Lista"}</button>
+                    </div>
                 </div>
-            );
+
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h4 className="font-extrabold text-slate-800 flex items-center gap-2">Resumen de Carga ({rows.length} bobinas)</h4></div>
+                    {rows.length === 0 ? ( <div className="p-12 text-center text-slate-400 font-bold">No hay bobinas ingresadas en esta sesión.</div> ) : (
+                        <div className="overflow-x-auto"><table className="w-full text-left whitespace-nowrap min-w-max">
+                            <thead className="bg-white border-b border-slate-200"><tr>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400">#</th><th className="px-6 py-4 text-xs font-black text-slate-400">SKU</th><th className="px-6 py-4 text-xs font-black text-slate-400">TIPO</th><th className="px-6 py-4 text-xs font-black text-slate-400">PROVEEDOR</th><th className="px-6 py-4 text-xs font-black text-slate-400">LOTE</th><th className="px-6 py-4 text-xs font-black text-indigo-500 text-right">KILOS</th><th className="px-6 py-4 text-xs font-black text-slate-400 text-center">ACCIONES</th>
+                            </tr></thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {rows.map((row, idx) => (
+                                    <tr key={row.id} className={`hover:bg-indigo-50/50 ${editingId === row.id ? 'bg-amber-50' : ''}`}>
+                                        <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{idx + 1}</td>
+                                        <td className="px-6 py-4 font-black text-indigo-900 text-sm">{row.sku}</td>
+                                        <td className="px-6 py-4 font-bold text-slate-600 text-xs">{row.tipo}</td>
+                                        <td className="px-6 py-4 font-bold text-slate-600 text-xs">{row.proveedor}</td>
+                                        <td className="px-6 py-4 font-mono font-bold text-slate-700 text-xs">{row.loteHija}</td>
+                                        <td className="px-6 py-4 font-black text-indigo-600 text-base text-right">{row.kg} kg</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button onClick={() => startEdit(row)} className="text-amber-500 bg-amber-50 hover:bg-amber-100 p-2 rounded-lg font-bold text-xs">Editar</button>
+                                                <button onClick={() => handlePreview(row)} className="text-indigo-500 bg-indigo-50 p-2 rounded-lg"><Icon name="tag" size={16} /></button>
+                                                <button onClick={() => removeRow(row.id)} className="text-red-500 bg-red-50 p-2 rounded-lg"><Icon name="trash" size={16} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table></div>
+                    )}
+                </div>
+            </div>
+        </main>
+        
+        <div className="bg-white border-t border-slate-200 p-6 flex justify-between items-center z-20 shadow-[-10px_0_40px_rgba(0,0,0,0.05)]">
+            <div className="flex flex-col"><span className="text-sm font-black text-slate-400 uppercase tracking-widest">Albarán Total</span><span className="text-4xl font-black text-indigo-900">{totalKg.toLocaleString('es-AR')} <span className="text-2xl text-indigo-400">KG</span></span></div>
+            <button onClick={() => setShowCloseModal(true)} className="bg-emerald-500 text-white px-10 py-5 rounded-2xl font-black text-xl flex items-center gap-2"><Icon name="printer" size={24} /> PROCESAR PDFs</button>
+        </div>
+    </div>
+</div>
             );
         };
 
