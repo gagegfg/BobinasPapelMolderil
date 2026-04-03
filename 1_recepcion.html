@@ -360,14 +360,49 @@
                 setTimeout(async () => {
                     try {
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(24);
+                        doc.text("RESUMEN DE PALLET", 105, 20, { align: "center" });
+                        doc.setFontSize(14);
+                        doc.text(empresa, 105, 30, { align: "center" });
+                        
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(10);
+                        doc.text(`Fecha de Cierre: ${formatDateDisplay(today)}`, 14, 45);
+                        doc.text(`Total Bobinas: ${rows.length}`, 14, 52);
+                        const kgsPallet = rows.reduce((acc, r) => acc + (parseFloat(String(r.kg || '0').replace(',', '.')) || 0), 0);
+                        doc.text(`Total Kilos Brutos: ${kgsPallet} KG`, 14, 59);
+
+                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "KG"];
+                        const tableRows = rows.map((r, idx) => [
+                            (idx + 1).toString(),
+                            r.sku || '',
+                            r.tipo || '',
+                            r.proveedor || '',
+                            r.loteHija || '',
+                            r.loteMadre || '',
+                            (r.kg || '0') + ' kg'
+                        ]);
+                        
+                        doc.autoTable({
+                            startY: 65,
+                            head: [tableColumn],
+                            body: tableRows,
+                            theme: 'grid',
+                            headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
+                            styles: { fontSize: 8, cellPadding: 2 }
+                        });
+
                         for (let i = 0; i < rows.length; i++) {
-                            if(i>0) doc.addPage('a4', 'portrait');
+                            doc.addPage('a4', 'portrait');
                             const row = rows[i];
                             const qrData = `MOLDERIL SA | UID: ${row.uid} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
                             await drawBobinaLabelNative(doc, row, empresa, qrData);
                         }
+                        
                         doc.save(`Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`);
-                    } catch (err) {}
+                    } catch (err) { console.error(err); }
                 }, 100);
             };
 
