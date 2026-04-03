@@ -107,153 +107,142 @@
 
         const drawBobinaLabelNative = async (doc, row, empresa, qrData) => {
             // A4 page is 210 x 297 mm
-            // Border
+            
+            // Outer Border
             doc.setLineWidth(1.5);
             doc.rect(10, 10, 190, 277);
 
-            // Header
+            // 1. HEADER (10 to 35)
             doc.setFont("helvetica", "bold");
             doc.setFontSize(40);
-            doc.text(empresa, 105, 30, { align: "center" });
+            doc.text(empresa, 105, 23, { align: "center" });
             
             doc.setFontSize(14);
             doc.setTextColor(100, 100, 100);
-            doc.text("IDENTIFICACION DE BOBINA", 105, 40, { align: "center", charSpace: 2 });
+            doc.text("IDENTIFICACION DE BOBINA", 105, 31, { align: "center", charSpace: 2 });
             doc.setTextColor(0, 0, 0);
 
             doc.setLineWidth(0.5);
-            doc.line(10, 48, 200, 48);
+            doc.line(10, 36, 200, 36);
 
-            // Row 1: Proveedor, SKU, Tipo // QR
-            // Proveedor
-            doc.setFontSize(11);
+            // 2. MAIN PRIORITY: TIPO DE PAPEL (36 to 70)
+            doc.setFontSize(14);
             doc.setTextColor(100, 100, 100);
-            doc.text("PROVEEDOR", 15, 60);
+            doc.text("TIPO DE PAPEL", 15, 45);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(26);
-            doc.text(row.proveedor || 'S/D', 15, 70);
-
-            // SKU
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text("SKU / ARTICULO", 15, 90);
-            doc.setTextColor(29, 78, 216); // text-blue-800
-            doc.setFontSize(32);
-            doc.text(row.sku || 'S/D', 15, 102);
-
-            // Tipo
-            doc.setFontSize(11);
-            doc.setTextColor(100, 100, 100);
-            doc.text("TIPO DE PAPEL", 15, 122);
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(24);
-            const tipoLines = doc.splitTextToSize(row.tipo || 'S/D', 110);
-            doc.text(tipoLines, 15, 132);
-
-            // QR Code (Right side)
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineDash([2, 2], 0);
-            doc.rect(130, 58, 60, 75);
-            doc.setLineDash([], 0);
-            doc.setDrawColor(0, 0, 0);
-
-            const qrImg = await getQRCodeDataURL(qrData);
-            doc.addImage(qrImg, 'PNG', 135, 63, 50, 50);
             
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.text("ID: " + row.uid, 160, 126, { align: "center" });
+            // Big and bold
+            doc.setFontSize(45);
+            const tipoLines = doc.splitTextToSize(row.tipo || 'S/D', 180);
+            doc.text(tipoLines, 15, 58);
+            
+            // Adjustable anchor based on how many lines "Tipo" took
+            const nextY = 58 + ((tipoLines.length - 1) * 16);
+            const anchorY = Math.max(nextY + 8, 80);
 
-            // Row 2: Corte / Peso (Huge box)
-            doc.setLineWidth(1.5);
-            doc.line(10, 150, 200, 150);
-            doc.line(10, 230, 200, 230);
+            doc.line(10, anchorY, 200, anchorY);
+
+            // 3. MAIN PRIORITY: PESO NETO (and Corte if present)
+            const midY = anchorY + 40;
+            const bottomY = anchorY + 80;
 
             if (row.corte) {
-                // Split in half
-                doc.line(105, 150, 105, 230);
-
-                // Corte
-                doc.setFillColor(0, 0, 0);
-                doc.rect(10, 150, 95, 80, 'F');
+                // Background for Corte
+                doc.setFillColor(30, 41, 59); // slate-800
+                doc.rect(10, anchorY, 95, 80, 'F');
                 doc.setTextColor(255, 255, 255);
                 
                 doc.setFontSize(14);
-                doc.text("ANCHO HIJA", 57.5, 165, { align: "center", charSpace: 1 });
+                doc.text("ANCHO HIJA", 57.5, anchorY + 15, { align: "center", charSpace: 1 });
                 
-                doc.setFontSize(65);
-                doc.text(row.corte, 50, 205, { align: "right" });
+                doc.setFontSize(70);
+                doc.text(row.corte, 57.5, midY + 15, { align: "center" });
                 doc.setFontSize(16);
-                doc.text("mm", 55, 205);
+                doc.text("mm", 57.5, midY + 25, { align: "center" });
                 
+                // Weight box
                 doc.setTextColor(0, 0, 0);
-
-                // Peso Neto
                 doc.setFontSize(14);
-                doc.setTextColor(100, 100, 100);
-                doc.text("PESO NETO", 152.5, 165, { align: "center", charSpace: 1 });
-                doc.setTextColor(30, 58, 138); // text-blue-900
+                doc.text("PESO NETO", 152.5, anchorY + 15, { align: "center", charSpace: 1 });
                 
-                doc.setFontSize(80);
-                doc.text(row.kg.toString() || '0', 145, 210, { align: "right" });
-                doc.setFontSize(18);
-                doc.text("kg", 150, 210);
+                doc.setTextColor(29, 78, 216); // blue-700
+                doc.setFontSize(90);
+                doc.text(row.kg.toString() || '0', 152.5, midY + 18, { align: "center" });
+                doc.setFontSize(20);
+                doc.text("kg", 152.5, midY + 30, { align: "center" });
             } else {
                 // Full Width Peso
-                doc.setFontSize(16);
+                doc.setFontSize(18);
                 doc.setTextColor(100, 100, 100);
-                doc.text("PESO NETO", 105, 165, { align: "center", charSpace: 1 });
-                doc.setTextColor(30, 58, 138);
+                doc.text("PESO NETO", 105, anchorY + 15, { align: "center", charSpace: 1 });
                 
-                doc.setFontSize(100);
-                doc.text(row.kg.toString() || '0', 105, 215, { align: "center" });
-                doc.setFontSize(22);
-                doc.text("kg", 170, 215);
+                doc.setTextColor(29, 78, 216); // blue-700
+                doc.setFontSize(120);
+                doc.text(row.kg.toString() || '0', 105, midY + 20, { align: "center" });
+                doc.setFontSize(26);
+                doc.text("kg", 180, midY + 15);
             }
-
             doc.setTextColor(0, 0, 0);
 
-            // Row 3: Detalles inferiores
+            doc.line(10, bottomY, 200, bottomY);
+
+            // 4. SECONDARY DATA & QR (bottomY to 277)
+            const qrX = 140;
+            
+            // Proveedor
             doc.setFontSize(10);
             doc.setTextColor(100, 100, 100);
-            doc.text("GRAMAJE", 15, 242);
+            doc.text("PROVEEDOR", 15, bottomY + 10);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(20);
+            doc.text(doc.splitTextToSize(row.proveedor || 'S/D', 115), 15, bottomY + 18);
+
+            // SKU
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("SKU / ARTICULO", 15, bottomY + 35);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(22);
-            doc.text((row.gramaje || '---') + " gr", 15, 252);
+            doc.text(doc.splitTextToSize(row.sku || 'S/D', 115), 15, bottomY + 43);
 
+            // Gramaje and Ancho Orig
             doc.setFontSize(10);
             doc.setTextColor(100, 100, 100);
-            doc.text("ANCHO ORIG.", 70, 242);
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(22);
-            doc.text((row.ancho || '---') + " mm", 70, 252);
-
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("LOTE PROV.", 130, 242);
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.text(row.loteMadre || 'N/A', 130, 252);
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("LOTE PROD.", 15, 267);
+            doc.text("GRAMAJE", 15, bottomY + 65);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(18);
-            doc.text(row.loteHija || 'N/A', 15, 277);
+            doc.text((row.gramaje || '---') + " gr", 15, bottomY + 72);
 
-            // Obs
-            if (row.obs) {
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text("OBSERVACIONES", 70, 267);
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(12);
-                const obsLines = doc.splitTextToSize(row.obs, 120);
-                doc.text(obsLines, 70, 274);
-            }
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("ANCHO ORIG.", 70, bottomY + 65);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(18);
+            doc.text((row.ancho || '---') + " mm", 70, bottomY + 72);
+
+            // Lote Prod / Prov
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("LOTE PROD.", 15, bottomY + 85);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(16);
+            doc.text(row.loteHija || 'N/A', 15, bottomY + 92);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("LOTE PROV.", 70, bottomY + 85);
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(16);
+            doc.text(row.loteMadre || 'N/A', 70, bottomY + 92);
+
+            // Right Block: QR Code
+            doc.setDrawColor(200, 200, 200);
+            const qrImg = await getQRCodeDataURL(qrData);
+            doc.addImage(qrImg, 'PNG', qrX, bottomY + 15, 50, 50);
+            
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text("ID: " + row.uid, qrX + 25, bottomY + 70, { align: "center" });
         };
 
         const App = () => {
