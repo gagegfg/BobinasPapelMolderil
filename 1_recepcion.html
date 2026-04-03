@@ -412,6 +412,7 @@
                                 const parts = decodedText.split(" | ");
                                 let newRow = { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: 'Re-etiquetado' };
                                 parts.forEach(p => {
+                                    if (p.startsWith("UID: ")) newRow.uid = p.replace("UID: ", "");
                                     if (p.startsWith("PROV: ")) newRow.proveedor = p.replace("PROV: ", "");
                                     if (p.startsWith("TIPO: ")) newRow.tipo = p.replace("TIPO: ", "");
                                     if (p.startsWith("KG: ")) newRow.kg = p.replace("KG: ", "");
@@ -421,9 +422,19 @@
                                     if (p.startsWith("SKU: ")) newRow.sku = p.replace("SKU: ", "");
                                     if (p.startsWith("GRAMAJE: ")) newRow.gramaje = p.replace("GRAMAJE: ", "");
                                     if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
+                                    if (p.startsWith("FECHA: ")) newRow.fecha = p.replace("FECHA: ", "");
                                 });
-                                setRows(prev => [...prev, newRow]);
+                                
                                 playSuccessSound(); closeRelabelScanner();
+                                setPreviewRow(newRow); setPreviewPdfUrl(null);
+                                setTimeout(async () => {
+                                    try {
+                                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                                        const qrData = decodedText;
+                                        await drawBobinaLabelNative(doc, newRow, empresa, qrData);
+                                        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+                                    } catch (err) {}
+                                }, 100);
                             }
                         }, () => {}
                     );

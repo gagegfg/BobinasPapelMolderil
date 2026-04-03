@@ -20,6 +20,7 @@
         .th-resize { resize: horizontal; overflow: auto; position: relative; background-clip: padding-box; }
         .th-resize::-webkit-scrollbar { height: 0px; width: 0px; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -43,6 +44,66 @@
                     <path d={paths[name]} />
                 </svg>
             );
+        };
+
+
+        const getQRCodeDataURL = (text) => {
+            return new Promise((resolve) => {
+                const div = document.createElement('div');
+                new window.QRCode(div, { text: text, width: 256, height: 256, correctLevel: window.QRCode.CorrectLevel.M });
+                setTimeout(() => {
+                    const canvas = div.querySelector('canvas');
+                    resolve(canvas.toDataURL('image/png'));
+                }, 100);
+            });
+        };
+
+        const drawBobinaLabelNative = async (doc, row, empresa, qrData) => {
+            doc.setLineWidth(1.5); doc.rect(10, 10, 190, 277);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(40); doc.text(empresa, 105, 23, { align: "center" });
+            doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text("IDENTIFICACION DE BOBINA", 105, 31, { align: "center", charSpace: 2 });
+            doc.setTextColor(0, 0, 0); doc.setLineWidth(0.5); doc.line(10, 36, 200, 36);
+            doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text("TIPO DE PAPEL", 15, 45);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(45);
+            const tipoLines = doc.splitTextToSize(row.tipo || 'S/D', 180);
+            doc.text(tipoLines, 15, 58);
+            const nextY = 58 + ((tipoLines.length - 1) * 16);
+            const anchorY = Math.max(nextY + 8, 80);
+            doc.line(10, anchorY, 200, anchorY);
+            const midY = anchorY + 40; const bottomY = anchorY + 80;
+            if (row.corte && row.corte.toString().trim() !== '') {
+                doc.setFillColor(30, 41, 59); doc.rect(10, anchorY, 95, 80, 'F'); doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14); doc.text("ANCHO HIJA", 57.5, anchorY + 15, { align: "center", charSpace: 1 });
+                doc.setFontSize(70); doc.text(String(row.corte), 57.5, midY + 15, { align: "center" });
+                doc.setFontSize(16); doc.text("mm", 57.5, midY + 25, { align: "center" });
+                doc.setTextColor(0, 0, 0); doc.setFontSize(14); doc.text("PESO NETO", 152.5, anchorY + 15, { align: "center", charSpace: 1 });
+                doc.setTextColor(29, 78, 216); doc.setFontSize(90); doc.text(String(row.kg) || '0', 152.5, midY + 18, { align: "center" });
+                doc.setFontSize(20); doc.text("kg", 152.5, midY + 30, { align: "center" });
+            } else {
+                doc.setFontSize(18); doc.setTextColor(100, 100, 100); doc.text("PESO NETO", 105, anchorY + 15, { align: "center", charSpace: 1 });
+                doc.setTextColor(29, 78, 216); doc.setFontSize(120); doc.text(String(row.kg) || '0', 105, midY + 20, { align: "center" });
+                doc.setFontSize(26); doc.text("kg", 180, midY + 15);
+            }
+            doc.setTextColor(0, 0, 0); doc.line(10, bottomY, 200, bottomY);
+            const qrX = 140;
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text("PROVEEDOR", 15, bottomY + 10);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(20); doc.text(doc.splitTextToSize(row.proveedor || 'S/D', 115), 15, bottomY + 18);
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text("SKU / ARTICULO", 15, bottomY + 35);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(22); doc.text(doc.splitTextToSize(row.sku || 'S/D', 115), 15, bottomY + 43);
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text("GRAMAJE", 15, bottomY + 65);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(18); doc.text((row.gramaje || '---') + " gr", 15, bottomY + 72);
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text("ANCHO ORIG.", 70, bottomY + 65);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(18); doc.text((row.ancho || '---') + " mm", 70, bottomY + 72);
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text("LOTE PROD.", 15, bottomY + 85);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(16); doc.text(row.loteHija || 'N/A', 15, bottomY + 92);
+            doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text("LOTE PROV.", 70, bottomY + 85);
+            doc.setTextColor(0, 0, 0); doc.setFontSize(16); doc.text(row.loteMadre || 'N/A', 70, bottomY + 92);
+            doc.setDrawColor(200, 200, 200);
+            try {
+                const qrImg = await getQRCodeDataURL(qrData);
+                doc.addImage(qrImg, 'PNG', qrX, bottomY + 15, 50, 50);
+            } catch(e) {}
+            doc.setFontSize(8); doc.setTextColor(100, 100, 100); doc.text("ID: " + (row.uid||'-'), qrX + 25, bottomY + 70, { align: "center" });
         };
 
         const App = () => {
@@ -161,7 +222,17 @@
                     doc.text("Firma Responsable Despacho", 115, finalY + 45);
                 }
 
-                doc.save(`Pedido_Produccion_${formatDateDisplay(fechaPedido).replace(/\//g, '-')}.pdf`);
+                
+                setTimeout(async () => {
+                    for (let i = 0; i < validRows.length; i++) {
+                        doc.addPage('a4', 'portrait');
+                        const r = validRows[i];
+                        const qrData = `MOLDERIL SA | UID: N/A | PROV: ${r.proveedor||''} | TIPO: ${r.tipo||''} | KG: ${r.kg||''} | SKU: ${r.sku||''} | GRAMAJE: ${r.gramaje||''} | ANCHO: ${r.ancho||''}`;
+                        await drawBobinaLabelNative(doc, r, "MOLDERIL S.A.", qrData);
+                    }
+                    doc.save(`Pedido_Produccion_${formatDateDisplay(fechaPedido).replace(/\//g, '-')}.pdf`);
+                }, 100);
+        
             };
 
             return (
