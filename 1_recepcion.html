@@ -507,24 +507,24 @@
                         }
                         
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
+                        // Siempre descargamos una copia local como respaldo
+                        doc.save(fileName);
+                        
                         if (actionType === 'share') {
                             if (navigator.canShare) {
                                 try {
                                     const blob = doc.output('blob');
                                     const file = new File([blob], fileName, { type: 'application/pdf' });
                                     await navigator.share({
-                                        title: 'Reporte Bobinas y Rótulos',
+                                        title: 'Resumen de Pallet',
                                         files: [file]
                                     });
                                 } catch (e) {
                                     console.log("Compartir cancelado o fallo", e);
                                 }
                             } else {
-                                alert("Tu navegador en PC no soporta abrir la ventana de compartir nativa (está pensada para celular). El documento se descargará para que lo envíes manualmente.");
-                                doc.save(fileName);
+                                alert("Tu navegador en PC no soporta abrir la ventana de compartir nativa. El documento se descargó exitosamente.");
                             }
-                        } else {
-                            doc.save(fileName);
                         }
 
                         setRows([]);
