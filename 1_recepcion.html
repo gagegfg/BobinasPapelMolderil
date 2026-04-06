@@ -190,50 +190,50 @@
             const qrX = 140;
             
             // Proveedor
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
             doc.text("PROVEEDOR", 15, bottomY + 10);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(20);
-            doc.text(doc.splitTextToSize(row.proveedor || 'S/D', 115), 15, bottomY + 18);
+            doc.setFontSize(26);
+            doc.text(doc.splitTextToSize(row.proveedor || 'S/D', 115), 15, bottomY + 20);
 
             // SKU
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
-            doc.text("SKU / ARTICULO", 15, bottomY + 35);
+            doc.text("SKU / ARTICULO", 15, bottomY + 38);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(22);
-            doc.text(doc.splitTextToSize(row.sku || 'S/D', 115), 15, bottomY + 43);
+            doc.setFontSize(30);
+            doc.text(doc.splitTextToSize(row.sku || 'S/D', 115), 15, bottomY + 48);
 
             // Gramaje and Ancho Orig
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
-            doc.text("GRAMAJE", 15, bottomY + 65);
+            doc.text("GRAMAJE", 15, bottomY + 68);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(18);
-            doc.text((row.gramaje || '---') + " gr", 15, bottomY + 72);
+            doc.setFontSize(24);
+            doc.text((row.gramaje || '---') + " gr", 15, bottomY + 76);
 
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
-            doc.text("ANCHO ORIG.", 70, bottomY + 65);
+            doc.text("ANCHO ORIG.", 70, bottomY + 68);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(18);
-            doc.text((row.ancho || '---') + " mm", 70, bottomY + 72);
+            doc.setFontSize(24);
+            doc.text((row.ancho || '---') + " mm", 70, bottomY + 76);
 
             // Lote Prod / Prov
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
-            doc.text("LOTE PROD.", 15, bottomY + 85);
+            doc.text("LOTE PROD.", 15, bottomY + 88);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(16);
-            doc.text(row.loteHija || 'N/A', 15, bottomY + 92);
+            doc.setFontSize(22);
+            doc.text(row.loteHija || 'N/A', 15, bottomY + 96);
 
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
-            doc.text("LOTE PROV.", 70, bottomY + 85);
+            doc.text("LOTE PROV.", 70, bottomY + 88);
             doc.setTextColor(0, 0, 0);
-            doc.setFontSize(16);
-            doc.text(row.loteMadre || 'N/A', 70, bottomY + 92);
+            doc.setFontSize(22);
+            doc.text(row.loteMadre || 'N/A', 70, bottomY + 96);
 
             // Right Block: QR Code
             doc.setDrawColor(200, 200, 200);
@@ -295,6 +295,21 @@
             useEffect(() => { localStorage.setItem('molderilRows', JSON.stringify(rows)); }, [rows]);
 
             useEffect(() => {
+                const handleClickOutside = (e) => {
+                    if (!e.target.closest('.dropdown-container')) setActiveDropdown(null);
+                };
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') setActiveDropdown(null);
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                document.addEventListener('keydown', handleKeyDown);
+                return () => {
+                    document.removeEventListener('mousedown', handleClickOutside);
+                    document.removeEventListener('keydown', handleKeyDown);
+                };
+            }, []);
+
+            useEffect(() => {
                 const cargarBaseDatosAutomatica = async () => {
                     try {
                         const response = await fetch('./BOBINAS.xlsx');
@@ -333,10 +348,11 @@
                 if (editingId) {
                     setRows(prev => prev.map(r => r.id === editingId ? formData : r));
                     setEditingId(null);
+                    setFormData(getNewFormData());
                 } else {
                     setRows([...rows, formData]);
+                    setFormData(prev => ({ ...prev, id: generateId(), uid: generateUID(), fecha: today, kg: '', loteMadre: '', loteHija: '', corte: '', obs: '' }));
                 }
-                setFormData(getNewFormData());
             };
 
             const cancelEdit = () => { setEditingId(null); setFormData(getNewFormData()); };
@@ -575,7 +591,7 @@
                     </div>
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 relative">
                         <div className="xl:col-span-5 space-y-4">
-                            <div className="relative">
+                            <div className="relative dropdown-container">
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU / Artículo</label>
                                 <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-black text-indigo-900 bg-slate-50" value={formData.sku} onChange={e => updateField('sku', e.target.value)} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..."/>
                                 {activeDropdown === 'sku' && (
@@ -605,7 +621,7 @@
                         </div>
 
                         <div className="xl:col-span-4 space-y-4">
-                            <div className="relative">
+                            <div className="relative dropdown-container">
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Proveedor Oficial</label>
                                 <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.proveedor} onChange={e => updateField('proveedor', e.target.value)} onFocus={() => setActiveDropdown('proveedor')}/>
                                 {activeDropdown === 'proveedor' && (
