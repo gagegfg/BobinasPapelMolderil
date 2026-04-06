@@ -466,6 +466,15 @@
                 }; reader.readAsText(file);
             };
 
+            const borrarTodo = () => {
+                if (window.confirm("¿Seguro que deseas borrar toda la grilla y la memoria caché? Esta acción no se puede deshacer.")) {
+                    setRows([]);
+                    setFormData(getNewFormData());
+                    setEditingId(null);
+                    localStorage.removeItem('molderilRows');
+                }
+            };
+
             return (
 <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
     {showHelp && (
@@ -544,8 +553,9 @@
             </div>
             <div className="flex gap-3">
                 <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
-                <button onClick={() => document.getElementById('json-upload').click()} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm"><Icon name="folder" size={16}/> Sesión</button>
-                <button onClick={exportarProyecto} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm"><Icon name="save" size={16}/> Guardar</button>
+                <button onClick={borrarTodo} className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 font-bold rounded-xl text-sm hover:bg-red-100 flex items-center gap-1"><Icon name="trash" size={16}/> Borrar todo</button>
+                <button onClick={() => document.getElementById('json-upload').click()} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="folder" size={16}/> Sesión</button>
+                <button onClick={exportarProyecto} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="save" size={16}/> Guardar</button>
             </div>
         </header>
 

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4. Gestión de Artículos - Molderil S.A.</title>
+
+    <!-- Librerías -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
+
+        const Icon = ({ name, size = 18 }) => {
+            const paths = {
+                plus: "M12 5v14M5 12h14",
+                trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+                save: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8",
+                folder: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z",
+                edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
+                archive: "M21 8v13H3V8M1 3h22v5H1zM10 12h4",
+                arrowLeft: "M19 12H5M12 19l-7-7 7-7"
+            };
+            return (
+                <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={paths[name]} />
+                </svg>
+            );
+        };
+
+        const App = () => {
+            const empresa = "MOLDERIL S.A.";
+            const [articulos, setArticulos] = useState([]);
+            const [editingId, setEditingId] = useState(null);
+            const [searchTerm, setSearchTerm] = useState("");
+            
+            const getEmptyForm = () => ({ proveedor: '', sku: '', tipo: '', gramaje: '', ancho: '' });
+            const [formData, setFormData] = useState(getEmptyForm());
+
+            const loadExcel = async () => {
+                try {
+                    const response = await fetch('./BOBINAS.xlsx');
+                    if (!response.ok) throw new Error("No se pudo hallar archivo local");
+                    const arrayBuffer = await response.arrayBuffer();
+                    const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                    const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                    const parsed = [];
+                    for (let i = 1; i < data.length; i++) {
+                        const r = data[i];
+                        if (Array.isArray(r) && r.join("").trim() !== "") {
+                            parsed.push({
+                                id: Date.now() + Math.random(),
+                                proveedor: String(r[0] || '').trim().toUpperCase(),
+                                sku: String(r[1] || '').trim().toUpperCase(),
+                                tipo: String(r[2] || '').trim().toUpperCase(),
+                                gramaje: String(r[3] || '').trim().toUpperCase(),
+                                ancho: String(r[4] || '').trim().toUpperCase()
+                            });
+                        }
+                    }
+                    setArticulos(parsed);
+                } catch (error) { 
+                    console.warn("Intente cargar manualmente", error);
+                }
+            };
+            
+            useEffect(() => {
+                loadExcel();
+            }, []);
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target.result;
+                        const wb = XLSX.read(bstr, { type: 'binary' });
+                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        const parsed = [];
+                        for (let i = 1; i < data.length; i++) {
+                            const r = data[i];
+                            if (Array.isArray(r) && r.join("").trim() !== "") {
+                                parsed.push({
+                                    id: Date.now() + Math.random(),
+                                    proveedor: String(r[0] || '').trim().toUpperCase(),
+                                    sku: String(r[1] || '').trim().toUpperCase(),
+                                    tipo: String(r[2] || '').trim().toUpperCase(),
+                                    gramaje: String(r[3] || '').trim().toUpperCase(),
+                                    ancho: String(r[4] || '').trim().toUpperCase()
+                                });
+                            }
+                        }
+                        setArticulos(parsed);
+                    } catch (err) { alert("Error al procesar archivo Excel."); }
+                    e.target.value = null;
+                }; 
+                reader.readAsBinaryString(file);
+            };
+
+            const descargarExcel = () => {
+                if (articulos.length === 0) { alert("No hay artículos para exportar"); return; }
+                const data = [["Proveedor", "SKU / Art", "Tipo", "Gramaje", "Ancho"]];
+                articulos.forEach(r => {
+                    data.push([r.proveedor, r.sku, r.tipo, r.gramaje, r.ancho]);
+                });
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                ws['!cols'] = [{wch: 20}, {wch: 30}, {wch: 30}, {wch: 15}, {wch: 15}];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Hoja1");
+                XLSX.writeFile(wb, "BOBINAS.xlsx");
+            };
+
+            const updateField = (field, value) => setFormData(prev => ({ ...prev, [field]: value.toUpperCase() }));
+
+            const submitForm = () => {
+                if (!formData.proveedor || !formData.sku || !formData.tipo) { alert("Completá proveedor, SKU y tipo"); return; }
+                if (editingId) {
+                    setArticulos(prev => prev.map(r => r.id === editingId ? { ...formData, id: editingId } : r));
+                    setEditingId(null);
+                } else {
+                    setArticulos(prev => [{ ...formData, id: Date.now() + Math.random() }, ...prev]);
+                }
+                setFormData(getEmptyForm());
+            };
+
+            const cancelEdit = () => { setEditingId(null); setFormData(getEmptyForm()); };
+            const startEdit = (row) => { setEditingId(row.id); setFormData(row); window.scrollTo(0, 0); };
+            const removeRow = (id) => { if(window.confirm("¿Eliminar artículo?")) setArticulos(prev => prev.filter(r => r.id !== id)); };
+
+            const filteredArticulos = articulos.filter(a => 
+                (a.sku + a.tipo + a.proveedor).toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            return (
+<div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
+    <aside className="hidden md:flex w-64 bg-slate-900 shadow-2xl flex-shrink-0 flex-col no-print text-slate-300">
+        <div className="p-6 border-b border-slate-800">
+            <h1 className="text-white text-xl font-black uppercase tracking-tight">{empresa}</h1>
+            <p className="text-purple-400 text-xs font-bold uppercase tracking-widest mt-1">Base de Datos</p>
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-purple-600 text-white rounded-xl font-bold"><Icon name="archive" size={20} /> Artículos Excel</a>
+            <a href="index.html" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-medium"><Icon name="arrowLeft" size={20} /> Salir al Menú</a>
+        </nav>
+    </aside>
+
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="bg-white border-b border-slate-200 px-8 py-5 flex justify-between items-center z-10 w-full flex-wrap gap-4">
+            <div>
+                <h2 className="text-2xl font-black text-slate-800">Gestor de Catálogo</h2>
+                <p className="text-sm text-slate-500 font-medium">Edición y actualización de base de datos BOBINAS.xlsx</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+                <input type="file" id="excel-upload" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+                <button onClick={() => document.getElementById('excel-upload').click()} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-slate-100"><Icon name="folder" size={16}/> Cargar Excel Manual</button>
+                <button onClick={descargarExcel} className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/30 px-5 py-2 font-black rounded-xl text-sm flex items-center gap-2 transition"><Icon name="save" size={16}/> Descargar BOBINAS.xlsx</button>
+            </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-8 pb-10">
+                <div className={`bg-white rounded-3xl shadow-xl border p-6 relative transition-all ${editingId ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                        <h3 className="font-black text-xl text-purple-900 flex items-center gap-2">
+                            <Icon name={editingId ? "edit" : "plus"} size={24} /> {editingId ? "Editando Artículo" : "Agregar Nuevo Artículo"}
+                        </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Proveedor</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.proveedor} onChange={e => updateField('proveedor', e.target.value)} placeholder="Ej. Ledesma"/></div>
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU / Artículo</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 outline-none font-black text-purple-900 uppercase" value={formData.sku} onChange={e => updateField('sku', e.target.value)} /></div>
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Tipo Papel</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.tipo} onChange={e => updateField('tipo', e.target.value)} /></div>
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Gramaje</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.gramaje} onChange={e => updateField('gramaje', e.target.value)} placeholder="Ej. 65" /></div>
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Ancho Orig.</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.ancho} onChange={e => updateField('ancho', e.target.value)} placeholder="Ej. 1200" /></div>
+                    </div>
+
+                    <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
+                        {editingId && <button onClick={cancelEdit} className="px-6 py-3 rounded-xl font-bold bg-slate-100">Cancelar</button>}
+                        <button onClick={submitForm} className={`px-8 py-3 rounded-xl font-black text-white shadow-md flex items-center gap-2 transition ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-purple-600 hover:bg-purple-700'}`}><Icon name={editingId ? "save" : "plus"} size={20} />{editingId ? "Guardar Cambios" : "Añadir a Catálogo"}</button>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center flex-wrap gap-4">
+                        <h4 className="font-extrabold text-slate-800 flex items-center gap-2">Catálogo Actual ({filteredArticulos.length})</h4>
+                        <input type="text" placeholder="Buscar SKU, Tipo o Proveedor..." className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-purple-500 w-full sm:w-80" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                    </div>
+                    {filteredArticulos.length === 0 ? ( <div className="p-12 text-center text-slate-400 font-bold">No hay artículos que coincidan.</div> ) : (
+                        <div className="overflow-x-auto"><table className="w-full text-left whitespace-nowrap min-w-max relative">
+                            <thead className="bg-white border-b border-slate-200 sticky top-0"><tr>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400">PROVEEDOR</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400">SKU / ARTÍCULO</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400">TIPO</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400">GRAMAJE</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400">ANCHO</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-400 text-center">ACCIONES</th>
+                            </tr></thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredArticulos.map((row) => (
+                                    <tr key={row.id} className={`hover:bg-purple-50/50 ${editingId === row.id ? 'bg-amber-50' : ''}`}>
+                                        <td className="px-6 py-3 font-bold text-slate-600 text-sm">{row.proveedor}</td>
+                                        <td className="px-6 py-3 font-black text-purple-900 text-sm">{row.sku}</td>
+                                        <td className="px-6 py-3 font-bold text-slate-600 text-sm">{row.tipo}</td>
+                                        <td className="px-6 py-3 font-mono font-bold text-slate-700 text-sm">{row.gramaje}</td>
+                                        <td className="px-6 py-3 font-mono font-bold text-slate-700 text-sm">{row.ancho}</td>
+                                        <td className="px-6 py-3 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button onClick={() => startEdit(row)} className="text-amber-600 bg-amber-50 hover:bg-amber-100 p-2 rounded-lg font-bold text-xs"><Icon name="edit" size={16} /></button>
+                                                <button onClick={() => removeRow(row.id)} className="text-red-500 bg-red-50 hover:bg-red-100 p-2 rounded-lg font-bold text-xs"><Icon name="trash" size={16} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table></div>
+                    )}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
