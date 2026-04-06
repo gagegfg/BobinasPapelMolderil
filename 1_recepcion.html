@@ -586,9 +586,7 @@
                 }
             }, [isRelabelScanning]);
 
-            useEffect(() => {
-                if (isAutoLoadingDB) loadInsumosFromDB();
-            }, [isAutoLoadingDB]);
+
 
             useEffect(() => {
                 if (isDevolucion && !editingId) {
