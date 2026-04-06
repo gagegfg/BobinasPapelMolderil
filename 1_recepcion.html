@@ -20,20 +20,77 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        @media print {
-            body { background: white !important; }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            .page-break { page-break-after: always !important; break-after: page !important; }
-            .print-area { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
         }
-        @page { margin: 0; size: A4 portrait; }
-        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; padding: 5px; }
-        #reader-relabel button { background-color: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; margin: 5px; cursor: pointer; border: none; }
-        #reader-relabel select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; width: 100%; }
-        .th-resize { resize: horizontal; overflow: auto; position: relative; background-clip: padding-box; }
-        .th-resize::-webkit-scrollbar { height: 0px; width: 0px; }
+
+        @media print {
+            body {
+                background: white !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+            }
+
+            .page-break {
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+
+            .print-area {
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+        }
+
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        #reader-relabel button {
+            background-color: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+        }
+
+        #reader-relabel select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .th-resize {
+            resize: horizontal;
+            overflow: auto;
+            position: relative;
+            background-clip: padding-box;
+        }
+
+        .th-resize::-webkit-scrollbar {
+            height: 0px;
+            width: 0px;
+        }
     </style>
 </head>
 
@@ -88,8 +145,8 @@
                 canvasRef.current.innerHTML = '';
                 new window.QRCode(canvasRef.current, {
                     text: text, width: size, height: size,
-                    colorDark : "#000000", colorLight : "#ffffff",
-                    correctLevel : window.QRCode.CorrectLevel.M
+                    colorDark: "#000000", colorLight: "#ffffff",
+                    correctLevel: window.QRCode.CorrectLevel.M
                 });
             }, [text, size]);
             return <div ref={canvasRef} style={{ width: size, height: size }} title="QR Code Seguro" />;
@@ -108,7 +165,7 @@
 
         const drawBobinaLabelNative = async (doc, row, empresa, qrData, isDevolucionFlag = false) => {
             // A4 page is 210 x 297 mm
-            
+
             // Outer Border
             doc.setLineWidth(1.5);
             doc.rect(10, 10, 190, 277);
@@ -117,7 +174,7 @@
             doc.setFont("helvetica", "bold");
             doc.setFontSize(40);
             doc.text(empresa, 105, 23, { align: "center" });
-            
+
             doc.setFontSize(14);
             doc.setTextColor(100, 100, 100);
             const tituloLabel = isDevolucionFlag ? "D E V O L U C I O N   D E   P R O D U C C I O N" : "I D E N T I F I C A C I O N   D E   B O B I N A";
@@ -132,12 +189,12 @@
             doc.setTextColor(100, 100, 100);
             doc.text("TIPO DE PAPEL", 15, 45);
             doc.setTextColor(0, 0, 0);
-            
+
             // Big and bold
             doc.setFontSize(45);
             const tipoLines = doc.splitTextToSize(row.tipo || 'S/D', 180);
             doc.text(tipoLines, 15, 58);
-            
+
             // Adjustable anchor based on how many lines "Tipo" took
             const nextY = 58 + ((tipoLines.length - 1) * 16);
             const anchorY = Math.max(nextY + 8, 80);
@@ -153,20 +210,20 @@
                 doc.setFillColor(30, 41, 59); // slate-800
                 doc.rect(10, anchorY, 95, 80, 'F');
                 doc.setTextColor(255, 255, 255);
-                
+
                 doc.setFontSize(14);
                 doc.text("ANCHO HIJA", 57.5, anchorY + 15, { align: "center", charSpace: 1 });
-                
+
                 doc.setFontSize(70);
                 doc.text(row.corte, 57.5, midY + 15, { align: "center" });
                 doc.setFontSize(16);
                 doc.text("mm", 57.5, midY + 25, { align: "center" });
-                
+
                 // Weight box
                 doc.setTextColor(0, 0, 0);
                 doc.setFontSize(14);
                 doc.text("PESO NETO", 152.5, anchorY + 15, { align: "center", charSpace: 1 });
-                
+
                 doc.setTextColor(29, 78, 216); // blue-700
                 doc.setFontSize(90);
                 doc.text(row.kg.toString() || '0', 152.5, midY + 18, { align: "center" });
@@ -177,7 +234,7 @@
                 doc.setFontSize(18);
                 doc.setTextColor(100, 100, 100);
                 doc.text("PESO NETO", 105, anchorY + 15, { align: "center", charSpace: 1 });
-                
+
                 doc.setTextColor(29, 78, 216); // blue-700
                 doc.setFontSize(120);
                 doc.text(row.kg.toString() || '0', 105, midY + 20, { align: "center" });
@@ -190,7 +247,7 @@
 
             // 4. SECONDARY DATA & QR (bottomY to 277)
             const qrX = 140;
-            
+
             // Proveedor
             doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
@@ -241,7 +298,7 @@
             doc.setDrawColor(200, 200, 200);
             const qrImg = await getQRCodeDataURL(qrData);
             doc.addImage(qrImg, 'PNG', qrX, bottomY + 15, 50, 50);
-            
+
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
             doc.text("ID: " + row.uid, qrX + 25, bottomY + 70, { align: "center" });
@@ -269,7 +326,7 @@
 
             const [rows, setRows] = useState(() => {
                 const saved = localStorage.getItem('molderilRows');
-                if (saved) { try { const p = JSON.parse(saved); if (Array.isArray(p)) return p; } catch (e) {} }
+                if (saved) { try { const p = JSON.parse(saved); if (Array.isArray(p)) return p; } catch (e) { } }
                 return [];
             });
 
@@ -369,13 +426,13 @@
                 setTimeout(async () => {
                     try {
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                        
+
                         doc.setFont("helvetica", "bold");
                         doc.setFontSize(24);
-                        doc.text(isDevolucion ? "DEVOLUCIÓN A DEPÓSITO" : "RESUMEN DE PALLET", 105, 20, { align: "center" });
+                        doc.text(isDevolucion ? "DEVOLUCIÓN A DEPÓSITO" : "RESUMEN DE BOBINAS", 105, 20, { align: "center" });
                         doc.setFontSize(14);
                         doc.text(empresa, 105, 30, { align: "center" });
-                        
+
                         doc.setFont("helvetica", "normal");
                         doc.setFontSize(10);
                         doc.text(`Fecha de Cierre: ${formatDateDisplay(today)}`, 14, 45);
@@ -393,7 +450,7 @@
                             r.loteMadre || '',
                             (r.kg || '0') + ' kg'
                         ]);
-                        
+
                         doc.autoTable({
                             startY: 65,
                             head: [tableColumn],
@@ -418,12 +475,12 @@
 
                         if (summaryList.length > 0) {
                             doc.addPage('a4', 'portrait');
-                            
+
                             doc.setFont("helvetica", "bold");
                             doc.setFontSize(22);
                             doc.setTextColor(30, 41, 59); // slate-800
                             doc.text("RESUMEN AGRUPADO POR ARTÍCULO", 105, 25, { align: "center" });
-                            
+
                             doc.setFontSize(10);
                             doc.setTextColor(148, 163, 184); // slate-400
                             doc.text(empresa, 105, 32, { align: "center" });
@@ -438,15 +495,15 @@
 
                             for (let i = 0; i < summaryList.length; i++) {
                                 const item = summaryList[i];
-                                
-                                if (currentX + cardW > 200) { 
-                                    currentX = marginX; 
-                                    currentY += cardH + spacingY; 
+
+                                if (currentX + cardW > 200) {
+                                    currentX = marginX;
+                                    currentY += cardH + spacingY;
                                 }
-                                if (currentY + cardH > 280) { 
-                                    doc.addPage('a4', 'portrait'); 
-                                    currentY = 20; 
-                                    currentX = marginX; 
+                                if (currentY + cardH > 280) {
+                                    doc.addPage('a4', 'portrait');
+                                    currentY = 20;
+                                    currentX = marginX;
                                 }
 
                                 // Tarjeta: Fondo y Borde
@@ -457,7 +514,7 @@
 
                                 // Cabecera (SKU y Tipo) - fondo muy suave, lo dibujamos como línea para separar
                                 doc.line(currentX, currentY + 24, currentX + cardW, currentY + 24);
-                                doc.line(currentX + cardW/2, currentY + 24, currentX + cardW/2, currentY + cardH);
+                                doc.line(currentX + cardW / 2, currentY + 24, currentX + cardW / 2, currentY + cardH);
 
                                 // SKU Header
                                 doc.setFontSize(7);
@@ -467,7 +524,7 @@
                                 doc.setTextColor(15, 23, 42); // slate-900
                                 doc.setFont("helvetica", "bold");
                                 doc.text(doc.splitTextToSize(item.sku, cardW - 8), currentX + 4, currentY + 11);
-                                
+
                                 // Tipo
                                 doc.setFont("helvetica", "normal");
                                 doc.setFontSize(9);
@@ -479,10 +536,10 @@
                                 doc.setFontSize(7);
                                 doc.setTextColor(148, 163, 184);
                                 doc.setFont("helvetica", "bold");
-                                doc.text("BOBINAS (CANT)", currentX + (cardW/4), currentY + 30, { align: "center" });
+                                doc.text("BOBINAS (CANT)", currentX + (cardW / 4), currentY + 30, { align: "center" });
                                 doc.setFontSize(22);
                                 doc.setTextColor(51, 65, 85); // slate-700
-                                doc.text(item.count.toString(), currentX + (cardW/4), currentY + 40, { align: "center" });
+                                doc.text(item.count.toString(), currentX + (cardW / 4), currentY + 40, { align: "center" });
 
                                 // Kilos
                                 doc.setFontSize(7);
@@ -505,18 +562,18 @@
                             const qrData = `MOLDERIL SA | UID: ${row.uid} | OP: ${opType} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
                             await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
                         }
-                        
+
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
                         // Siempre descargamos una copia local como respaldo
                         doc.save(fileName);
-                        
+
                         if (actionType === 'share') {
                             if (navigator.canShare) {
                                 try {
                                     const blob = doc.output('blob');
                                     const file = new File([blob], fileName, { type: 'application/pdf' });
                                     await navigator.share({
-                                        title: 'Resumen de Pallet',
+                                        title: 'Resumen de Bobinas',
                                         files: [file]
                                     });
                                 } catch (e) {
@@ -532,8 +589,8 @@
                         setEditingId(null);
                         setShowCloseModal(false);
                         setIsGeneratingPdf(false);
-                    } catch (err) { 
-                        console.error(err); 
+                    } catch (err) {
+                        console.error(err);
                         setIsGeneratingPdf(false);
                     }
                 }, 100);
@@ -568,7 +625,7 @@
                                     if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
                                     if (p.startsWith("FECHA: ")) newRow.fecha = p.replace("FECHA: ", "");
                                 });
-                                
+
                                 playSuccessSound(); closeRelabelScanner();
                                 setPreviewRow(newRow); setPreviewPdfUrl(null);
                                 setTimeout(async () => {
@@ -578,10 +635,10 @@
                                         let isDev = decodedText.includes("OP: DEVOLUCION");
                                         await drawBobinaLabelNative(doc, newRow, empresa, qrData, isDev);
                                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-                                    } catch (err) {}
+                                    } catch (err) { }
                                 }, 100);
                             }
-                        }, () => {}
+                        }, () => { }
                     );
                 }
             }, [isRelabelScanning]);
@@ -605,7 +662,7 @@
                         const qrData = `MOLDERIL SA | UID: ${row.uid} | OP: ${opType} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
                         await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-                    } catch (err) {}
+                    } catch (err) { }
                 }, 100);
             };
             const exportarProyecto = () => {
@@ -617,7 +674,7 @@
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (evt) => {
-                    try { const imp = JSON.parse(evt.target.result); if(Array.isArray(imp)) setRows(imp); } catch (e) {}
+                    try { const imp = JSON.parse(evt.target.result); if (Array.isArray(imp)) setRows(imp); } catch (e) { }
                     e.target.value = null;
                 }; reader.readAsText(file);
             };
@@ -632,276 +689,275 @@
             };
 
             return (
-<div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
-    {showHelp && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
-            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
-                <div className="sticky top-0 bg-white pb-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-                    <h3 className="font-black text-2xl text-indigo-900 flex items-center gap-3">
-                        <Icon name="tag" size={28} /> Manual de Recepción
-                    </h3>
-                    <button onClick={() => setShowHelp(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full w-10 h-10 font-black text-xl flex items-center justify-center transition-colors">✕</button>
-                </div>
-                
-                <div className="overflow-y-auto overflow-x-hidden pr-2 flex-1 mt-6 space-y-8 custom-scrollbar">
-                    
-                    <div className="space-y-3">
-                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">1</span> Determinar el Contexto</h4>
-                        <p className="text-slate-600 text-sm leading-relaxed px-10">En la parte superior, fije si va a registrar un <strong className="text-indigo-600">INGRESO DE PROVEEDOR</strong> (bobinas vírgenes recién compradas) o una <strong className="text-orange-500">DEVOLUCIÓN DE PRODUCCIÓN</strong> (material que regresa). Esto ajustará automáticamente el Proveedor y etiquetará el reporte final correctamente para la administración.</p>
-                    </div>
+                <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
+                    {showHelp && (
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+                            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
+                                <div className="sticky top-0 bg-white pb-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                                    <h3 className="font-black text-2xl text-indigo-900 flex items-center gap-3">
+                                        <Icon name="tag" size={28} /> Manual de Recepción
+                                    </h3>
+                                    <button onClick={() => setShowHelp(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full w-10 h-10 font-black text-xl flex items-center justify-center transition-colors">✕</button>
+                                </div>
 
-                    <div className="space-y-3">
-                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">2</span> Función de Escáner y Re-etiquetado</h4>
-                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use el botón <strong className="text-emerald-700">Re-Etiquetar</strong> para abrir la cámara. Si escanea un rótulo dañado de la fábrica, el sistema completará mágicamente todo el formulario con esos datos exactos, listo para re-imprimir un rótulo nuevo idéntico.</p>
-                    </div>
+                                <div className="overflow-y-auto overflow-x-hidden pr-2 flex-1 mt-6 space-y-8 custom-scrollbar">
 
-                    <div className="space-y-3">
-                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">3</span> Carga por Buscador (Autocompletado)</h4>
-                        <p className="text-slate-600 text-sm leading-relaxed px-10">Para carga manual, escriba parte del SKU o Tipo de Papel. Se desplegará una lista de sugerencias basada en la Base de Datos. Al hacer clic, completará Tipo, SKU, Proveedor, Gramaje y Ancho en un segundo.</p>
-                    </div>
-
-                    <div className="space-y-3">
-                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-amber-100 text-amber-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">4</span> Cierre del Pallet o Recepción</h4>
-                        <p className="text-slate-600 text-sm leading-relaxed px-10">Una vez registradas todas las bobinas en la ventana inferior, toque el botón violeta <strong className="bg-indigo-600 text-white px-2 py-0.5 rounded">PROCESAR Pdfs</strong>. Esto le pedirá confirmar si desea <strong>Descargar</strong> el archivo PDF en el equipo actual o <strong>Compartirlo</strong> enviándolo directamente al teléfono o WhatsApp vinculado. Al finalizar se vaciará la lista.</p>
-                    </div>
-
-                </div>
-
-                <div className="pt-6 border-t border-slate-100 mt-4 shrink-0">
-                    <button onClick={() => setShowHelp(false)} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors">Entendido</button>
-                </div>
-            </div>
-        </div>
-    )}
-    {showCloseModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
-            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl relative">
-                {isGeneratingPdf ? (
-                    <div className="py-8">
-                        <div className="inline-block animate-spin w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
-                        <h3 className="font-black text-2xl text-slate-900">Generando PDF...</h3>
-                        <p className="text-slate-500 font-medium mt-2">Construyendo páginas vectoriales</p>
-                    </div>
-                ) : (
-                    <>
-                        <h3 className="font-black text-2xl text-slate-900 mb-6">Emisión de Rótulos</h3>
-                        <div className="space-y-4">
-                            <button onClick={() => procesarCierreLista('download')} className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-4 rounded-xl font-bold text-lg transition-colors">
-                                <Icon name="printer" size={24} /> Descargar PDF
-                            </button>
-                            <button onClick={() => procesarCierreLista('share')} className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-emerald-500/20">
-                                <Icon name="share" size={24} /> Compartir (Móvil)
-                            </button>
-                            <button onClick={() => setShowCloseModal(false)} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-4 rounded-xl font-bold transition-colors mt-2">
-                                Cancelar
-                            </button>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    )}
-    {previewRow && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
-            <div className="bg-white p-4 rounded-3xl w-full max-w-[220mm] h-[90vh] flex flex-col shadow-2xl">
-                <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-extrabold text-lg text-slate-800">Vista Previa</h3>
-                    <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-slate-200 w-10 h-10 rounded-xl font-bold">✕</button>
-                </div>
-                {previewPdfUrl ? <iframe src={previewPdfUrl} className="w-full h-full rounded-xl" title="Preview"></iframe> : <div>Cargando...</div>}
-            </div>
-        </div>
-    )}
-    {isRelabelScanning && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
-            <div className="bg-white p-6 rounded-3xl w-full max-w-md text-center shadow-2xl">
-                <h3 className="font-black text-xl mb-2">Escanear QR</h3>
-                <div id="reader-relabel" className="w-full rounded-2xl overflow-hidden border-2 border-indigo-100"></div>
-                <button onClick={closeRelabelScanner} className="mt-6 bg-slate-100 py-4 w-full rounded-xl font-bold">Cancelar</button>
-            </div>
-        </div>
-    )}
-    
-    <aside className="hidden md:flex w-64 bg-slate-900 shadow-2xl flex-shrink-0 flex-col no-print text-slate-300">
-        <div className="p-6 border-b border-slate-800">
-            <h1 className="text-white text-xl font-black uppercase tracking-tight">{empresa}</h1>
-            <p className="text-indigo-400 text-xs font-bold uppercase tracking-widest mt-1">Recepción</p>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold"><Icon name="box" size={20} /> Ingreso Bobinas</a>
-            <a href="index.html" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-medium"><Icon name="arrowLeft" size={20} /> Salir al Menú</a>
-        </nav>
-        <div className="p-4 border-t border-slate-800"><button onClick={() => setShowHelp(true)} className="flex items-center gap-3 px-4 py-3 w-full hover:bg-slate-800 rounded-xl font-medium"><Icon name="tag" size={20} /> Ayuda</button></div>
-    </aside>
-
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 flex justify-around items-center p-3 border-t border-slate-800 z-50 no-print">
-        <a href="#" className="flex flex-col items-center gap-1 text-indigo-400">
-            <Icon name="box" size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Ingreso</span>
-        </a>
-        <button onClick={() => setShowHelp(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors">
-            <Icon name="tag" size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Ayuda</span>
-        </button>
-        <a href="index.html" className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors">
-            <Icon name="arrowLeft" size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Menú</span>
-        </a>
-    </nav>
-
-    <div className="flex-1 flex flex-col h-screen overflow-hidden pb-16 md:pb-0">
-        <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 md:py-5 flex flex-col md:flex-row justify-between items-start md:items-center flex-wrap gap-4 no-print z-10 w-full">
-            <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto">
-                <h2 className="text-2xl font-black text-slate-800">Panel de Carga</h2>
-                {!isAutoLoadingDB && insumosDB.length === 0 && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-300">⚠️ Falta Base datos</span>}
-            </div>
-            <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto">
-                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
-                <button onClick={borrarTodo} className="flex-1 md:flex-none justify-center bg-red-50 text-red-600 border border-red-200 px-4 py-3 md:py-2 font-bold rounded-xl text-sm hover:bg-red-100 flex items-center gap-1"><Icon name="trash" size={16}/> Borrar todo</button>
-                <button onClick={() => document.getElementById('json-upload').click()} className="flex-1 md:flex-none justify-center bg-slate-50 border border-slate-200 px-4 py-3 md:py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="folder" size={16}/> Sesión</button>
-                <button onClick={exportarProyecto} className="flex-1 md:flex-none justify-center w-full md:w-auto mt-2 md:mt-0 bg-slate-50 border border-slate-200 px-4 py-3 md:py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="save" size={16}/> Guardar</button>
-            </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            <div className="max-w-6xl mx-auto space-y-8 pb-10">
-                
-                <div className="flex bg-slate-200 rounded-2xl p-1 overflow-hidden shrink-0 shadow-inner max-w-2xl mx-auto">
-                    <button 
-                        onClick={() => setIsDevolucion(false)}
-                        className={`flex-1 py-3 px-4 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${!isDevolucion ? 'bg-white text-indigo-700 shadow-md transform scale-100' : 'text-slate-500 hover:bg-slate-300'}`}>
-                        <Icon name="box" size={18}/> INGRESO DE PROVEEDOR
-                    </button>
-                    <button 
-                        onClick={() => setIsDevolucion(true)}
-                        className={`flex-1 py-3 px-4 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${isDevolucion ? 'bg-orange-500 text-white shadow-md transform scale-100 shadow-orange-500/30' : 'text-slate-500 hover:bg-slate-300'}`}>
-                        <Icon name="arrowLeft" size={18}/> DEVOLUCIÓN (PRODUCCIÓN)
-                    </button>
-                </div>
-
-                <div className={`bg-white rounded-3xl shadow-xl border p-4 md:p-6 relative transition-all ${editingId ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200'}`}>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-100 gap-4">
-                        <h3 className="font-black text-lg md:text-xl text-indigo-900 flex items-center gap-2">
-                            <Icon name={editingId ? "edit" : "plus"} size={24} /> {editingId ? "Editando" : "Nueva Bobina"}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto">
-                            <input type="date" className="flex-1 md:flex-none bg-slate-50 outline-none text-sm font-bold text-slate-600 rounded-lg px-3 py-3 md:py-2 cursor-pointer border border-slate-200" value={formData.fecha} onChange={e => updateField('fecha', e.target.value)} />
-                            <button onClick={() => setIsRelabelScanning(true)} className="flex-1 md:flex-none justify-center bg-emerald-50 border border-emerald-200 px-4 py-3 md:py-2 rounded-lg font-bold flex items-center gap-2 text-emerald-800 text-sm">
-                                <Icon name="camera" size={16}/> Re-Etiquetar
-                            </button>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 relative">
-                        <div className="xl:col-span-5 space-y-4">
-                            <div className="relative dropdown-container">
-                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU / Artículo</label>
-                                <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-black text-indigo-900 bg-slate-50" value={formData.sku} onChange={e => updateField('sku', e.target.value)} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..."/>
-                                {activeDropdown === 'sku' && (
-                                    <div className="absolute z-[9999] top-full left-0 mt-2 w-[450px] bg-white border shadow-2xl rounded-2xl max-h-[300px] overflow-y-auto overflow-x-hidden">
-                                        <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-900 border-b">Catálogo de Excel ({insumosDB.length})</div>
-                                        {insumosDB.filter(item => {
-                                            const norm = str => String(str||'').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
-                                            return formData.sku ? norm(item.sku).includes(norm(formData.sku)) : true;
-                                        }).filter((item, idx, self) => idx === self.findIndex(t => t.sku === item.sku))
-                                        .map((item, idx) => (
-                                            <div key={idx} className="p-4 hover:bg-slate-50 border-b cursor-pointer w-full text-left" onMouseDown={(e) => { e.preventDefault(); updateField('sku', item.sku); updateField('tipo', item.tipo); updateField('gramaje', item.gramaje); updateField('ancho', item.ancho); updateField('proveedor', item.proveedor); setActiveDropdown(null); }}>
-                                                <div className="font-black text-slate-900 text-sm">{item.sku}</div>
-                                                <div className="text-slate-600 text-xs">{item.tipo} | {item.gramaje}g | {item.ancho}mm</div>
-                                            </div>
-                                        ))}
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">1</span> Determinar el Contexto</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">En la parte superior, fije si va a registrar un <strong className="text-indigo-600">ROTULADO EN DEPOSITO</strong> (bobinas vírgenes recién compradas) o una <strong className="text-orange-500">DEVOLUCIÓN DE PRODUCCIÓN</strong> (material que regresa). Esto ajustará automáticamente el Proveedor y etiquetará el reporte final correctamente para la administración.</p>
                                     </div>
-                                )}
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Descripción de Papel</label>
-                                <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-bold text-slate-700 uppercase" value={formData.tipo} onChange={e => updateField('tipo', e.target.value)} onFocus={() => setActiveDropdown('tipo')}/>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Gramaje</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 outline-none font-bold uppercase" value={formData.gramaje} onChange={e => updateField('gramaje', e.target.value)} /></div>
-                                <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Ancho Orig.</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 outline-none font-bold uppercase" value={formData.ancho} onChange={e => updateField('ancho', e.target.value)} /></div>
-                            </div>
-                        </div>
 
-                        <div className="xl:col-span-4 space-y-4">
-                            <div className="relative dropdown-container">
-                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Proveedor Oficial</label>
-                                <input className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.proveedor} onChange={e => updateField('proveedor', e.target.value)} onFocus={() => setActiveDropdown('proveedor')}/>
-                                {activeDropdown === 'proveedor' && (
-                                    <div className="absolute z-[9999] top-full left-0 mt-2 w-full bg-white shadow-2xl rounded-xl max-h-[250px] overflow-y-auto border">
-                                        {insumosDB.filter((item, idx, self) => idx === self.findIndex(t => t.proveedor === item.proveedor)).map((item, idx) => (
-                                            <div key={idx} className="p-3 hover:bg-slate-100 cursor-pointer font-bold uppercase text-sm border-b" onMouseDown={(e) => { e.preventDefault(); updateField('proveedor', item.proveedor); setActiveDropdown(null); }}>{item.proveedor}</div>
-                                        ))}
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">2</span> Función de Escáner y Re-etiquetado</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use el botón <strong className="text-emerald-700">Re-Etiquetar</strong> para abrir la cámara. Si escanea un rótulo dañado de la fábrica, el sistema completará mágicamente todo el formulario con esos datos exactos, listo para re-imprimir un rótulo nuevo idéntico.</p>
                                     </div>
-                                )}
+
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">3</span> Carga por Buscador (Autocompletado)</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Para carga manual, escriba parte del SKU o Tipo de Papel. Se desplegará una lista de sugerencias basada en la Base de Datos. Al hacer clic, completará Tipo, SKU, Proveedor, Gramaje y Ancho en un segundo.</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-amber-100 text-amber-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">4</span> Cierre del Pallet o Recepción</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Una vez registradas todas las bobinas en la ventana inferior, toque el botón violeta <strong className="bg-indigo-600 text-white px-2 py-0.5 rounded">PROCESAR Pdfs</strong>. Esto le pedirá confirmar si desea <strong>Descargar</strong> el archivo PDF en el equipo actual o <strong>Compartirlo</strong> enviándolo directamente al teléfono o WhatsApp vinculado. Al finalizar se vaciará la lista.</p>
+                                    </div>
+
+                                </div>
+
+                                <div className="pt-6 border-t border-slate-100 mt-4 shrink-0">
+                                    <button onClick={() => setShowHelp(false)} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors">Entendido</button>
+                                </div>
                             </div>
-                            <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Lote Prov. (Fábrica)</label><input className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold uppercase" value={formData.loteMadre} onChange={e => updateField('loteMadre', e.target.value)} /></div>
-                            <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Lote Prod. (Molderil)</label><input className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold uppercase" value={formData.loteHija} onChange={e => updateField('loteHija', e.target.value)} /></div>
                         </div>
-
-                        <div className="xl:col-span-3 flex flex-col justify-end bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                             <div className="mb-4"><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 text-center">Ancho Hija (Corte mm)</label><input className="w-full h-12 text-center font-bold text-lg rounded-xl border-2 border-indigo-100 outline-none" placeholder="Opcional" value={formData.corte} onChange={e => updateField('corte', e.target.value)} /></div>
-                            <div><label className="block text-xs font-black text-indigo-600 uppercase tracking-widest mb-2 text-center">PESO NETO</label><div className="relative"><input className="w-full h-16 text-center font-black text-indigo-700 text-3xl rounded-xl border-2 border-indigo-400 outline-none pr-10" placeholder="0.00" value={formData.kg} onChange={e => updateField('kg', e.target.value)} /><span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-indigo-400 text-lg">KG</span></div></div>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
-                        {editingId && <button onClick={cancelEdit} className="w-full md:w-auto px-6 py-4 md:py-4 rounded-xl font-bold bg-slate-100">Cancelar</button>}
-                        <button onClick={() => setFormData(getNewFormData())} className="w-full md:w-auto px-6 py-4 md:py-4 rounded-xl font-bold border border-slate-200">Limpiar</button>
-                        <button onClick={submitForm} className={`w-full md:w-auto justify-center px-10 py-4 md:py-4 rounded-xl font-black text-white shadow-xl text-lg flex gap-2 ${editingId ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name={editingId ? "save" : "plus"} size={20} />{editingId ? "Actualizar Fila" : "Agregar a la Lista"}</button>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-6">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h4 className="font-extrabold text-slate-800 flex items-center gap-2">Resumen de Carga ({rows.length} bobinas)</h4></div>
-                    {rows.length === 0 ? ( <div className="p-12 text-center text-slate-400 font-bold">No hay bobinas ingresadas en esta sesión.</div> ) : (
-                        <div className="overflow-x-auto"><table className="w-full text-left whitespace-nowrap min-w-max">
-                            <thead className="bg-white border-b border-slate-200"><tr>
-                                <th className="px-6 py-4 text-xs font-black text-slate-400">#</th><th className="px-6 py-4 text-xs font-black text-slate-400">SKU</th><th className="px-6 py-4 text-xs font-black text-slate-400">TIPO</th><th className="px-6 py-4 text-xs font-black text-slate-400">PROVEEDOR</th><th className="px-6 py-4 text-xs font-black text-slate-400">LOTE</th><th className="px-6 py-4 text-xs font-black text-indigo-500 text-right">KILOS</th><th className="px-6 py-4 text-xs font-black text-slate-400 text-center">ACCIONES</th>
-                            </tr></thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {rows.map((row, idx) => (
-                                    <tr key={row.id} className={`hover:bg-indigo-50/50 ${editingId === row.id ? 'bg-amber-50' : ''}`}>
-                                        <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{idx + 1}</td>
-                                        <td className="px-6 py-4 font-black text-indigo-900 text-sm">{row.sku}</td>
-                                        <td className="px-6 py-4 font-bold text-slate-600 text-xs">{row.tipo}</td>
-                                        <td className="px-6 py-4 font-bold text-slate-600 text-xs">{row.proveedor}</td>
-                                        <td className="px-6 py-4 font-mono font-bold text-slate-700 text-xs">{row.loteHija}</td>
-                                        <td className="px-6 py-4 font-black text-indigo-600 text-base text-right">{row.kg} kg</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex justify-center gap-2">
-                                                <button onClick={() => startEdit(row)} className="text-amber-500 bg-amber-50 hover:bg-amber-100 p-2 rounded-lg font-bold text-xs">Editar</button>
-                                                <button onClick={() => handlePreview(row)} className="text-indigo-500 bg-indigo-50 p-2 rounded-lg"><Icon name="tag" size={16} /></button>
-                                                <button onClick={() => removeRow(row.id)} className="text-red-500 bg-red-50 p-2 rounded-lg"><Icon name="trash" size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table></div>
                     )}
+                    {showCloseModal && (
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+                            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl relative">
+                                {isGeneratingPdf ? (
+                                    <div className="py-8">
+                                        <div className="inline-block animate-spin w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
+                                        <h3 className="font-black text-2xl text-slate-900">Generando PDF...</h3>
+                                        <p className="text-slate-500 font-medium mt-2">Construyendo páginas vectoriales</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h3 className="font-black text-2xl text-slate-900 mb-6">Emisión de Rótulos</h3>
+                                        <div className="space-y-4">
+                                            <button onClick={() => procesarCierreLista('download')} className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-4 rounded-xl font-bold text-lg transition-colors">
+                                                <Icon name="printer" size={24} /> Descargar PDF
+                                            </button>
+                                            <button onClick={() => procesarCierreLista('share')} className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-emerald-500/20">
+                                                <Icon name="share" size={24} /> Compartir (Móvil)
+                                            </button>
+                                            <button onClick={() => setShowCloseModal(false)} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-4 rounded-xl font-bold transition-colors mt-2">
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {previewRow && (
+                        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+                            <div className="bg-white p-4 rounded-3xl w-full max-w-[220mm] h-[90vh] flex flex-col shadow-2xl">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="font-extrabold text-lg text-slate-800">Vista Previa</h3>
+                                    <button onClick={() => { setPreviewRow(null); setPreviewPdfUrl(null); }} className="bg-slate-200 w-10 h-10 rounded-xl font-bold">✕</button>
+                                </div>
+                                {previewPdfUrl ? <iframe src={previewPdfUrl} className="w-full h-full rounded-xl" title="Preview"></iframe> : <div>Cargando...</div>}
+                            </div>
+                        </div>
+                    )}
+                    {isRelabelScanning && (
+                        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+                            <div className="bg-white p-6 rounded-3xl w-full max-w-md text-center shadow-2xl">
+                                <h3 className="font-black text-xl mb-2">Escanear QR</h3>
+                                <div id="reader-relabel" className="w-full rounded-2xl overflow-hidden border-2 border-indigo-100"></div>
+                                <button onClick={closeRelabelScanner} className="mt-6 bg-slate-100 py-4 w-full rounded-xl font-bold">Cancelar</button>
+                            </div>
+                        </div>
+                    )}
+
+                    <aside className="hidden md:flex w-64 bg-slate-900 shadow-2xl flex-shrink-0 flex-col no-print text-slate-300">
+                        <div className="p-6 border-b border-slate-800">
+                            <h1 className="text-white text-xl font-black uppercase tracking-tight">{empresa}</h1>
+                            <p className="text-indigo-400 text-xs font-bold uppercase tracking-widest mt-1">Recepción</p>
+                        </div>
+                        <nav className="flex-1 p-4 space-y-2">
+                            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold"><Icon name="box" size={20} /> Ingreso Bobinas</a>
+                            <a href="index.html" className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-medium"><Icon name="arrowLeft" size={20} /> Salir al Menú</a>
+                        </nav>
+                        <div className="p-4 border-t border-slate-800"><button onClick={() => setShowHelp(true)} className="flex items-center gap-3 px-4 py-3 w-full hover:bg-slate-800 rounded-xl font-medium"><Icon name="tag" size={20} /> Ayuda</button></div>
+                    </aside>
+
+                    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 flex justify-around items-center p-3 border-t border-slate-800 z-50 no-print">
+                        <a href="#" className="flex flex-col items-center gap-1 text-indigo-400">
+                            <Icon name="box" size={24} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Ingreso</span>
+                        </a>
+                        <button onClick={() => setShowHelp(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors">
+                            <Icon name="tag" size={24} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Ayuda</span>
+                        </button>
+                        <a href="index.html" className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors">
+                            <Icon name="arrowLeft" size={24} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Menú</span>
+                        </a>
+                    </nav>
+
+                    <div className="flex-1 flex flex-col h-screen overflow-hidden pb-16 md:pb-0">
+                        <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-2 md:py-3 flex flex-col md:flex-row justify-between items-start md:items-center flex-wrap gap-2 no-print z-10 w-full">
+                            <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto">
+                                <h2 className="text-xl font-black text-slate-800">Panel de Carga</h2>
+                                {!isAutoLoadingDB && insumosDB.length === 0 && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-300">⚠️ Falta Base datos</span>}
+                            </div>
+                            <div className="flex flex-wrap gap-2 md:gap-2 w-full md:w-auto">
+                                <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
+                                <button onClick={borrarTodo} className="flex-1 md:flex-none justify-center bg-red-50 text-red-600 border border-red-200 px-3 py-2 font-bold rounded-xl text-xs hover:bg-red-100 flex items-center gap-1"><Icon name="trash" size={14} /> Borrar todo</button>
+                                <button onClick={() => document.getElementById('json-upload').click()} className="flex-1 md:flex-none justify-center bg-slate-50 border border-slate-200 px-3 py-2 font-bold rounded-xl text-xs hover:bg-slate-100 flex items-center gap-1"><Icon name="folder" size={14} /> Sesión</button>
+                                <button onClick={exportarProyecto} className="flex-1 md:flex-none justify-center w-full md:w-auto mt-2 md:mt-0 bg-slate-50 border border-slate-200 px-3 py-2 font-bold rounded-xl text-xs hover:bg-slate-100 flex items-center gap-1"><Icon name="save" size={14} /> Guardar</button>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 overflow-y-auto p-2 md:p-4">
+                            <div className="max-w-6xl mx-auto space-y-4 pb-4">
+
+                                <div className="flex bg-slate-200 rounded-2xl p-1 overflow-hidden shrink-0 shadow-inner max-w-2xl mx-auto">
+                                    <button
+                                        onClick={() => setIsDevolucion(false)}
+                                        className={`flex-1 py-3 px-4 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${!isDevolucion ? 'bg-white text-indigo-700 shadow-md transform scale-100' : 'text-slate-500 hover:bg-slate-300'}`}>
+                                        <Icon name="box" size={18} /> ROTULADO EN DEPOSITO
+                                    </button>
+                                    <button
+                                        onClick={() => setIsDevolucion(true)}
+                                        className={`flex-1 py-3 px-4 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${isDevolucion ? 'bg-orange-500 text-white shadow-md transform scale-100 shadow-orange-500/30' : 'text-slate-500 hover:bg-slate-300'}`}>
+                                        <Icon name="arrowLeft" size={18} /> DEVOLUCIÓN (PRODUCCIÓN)
+                                    </button>
+                                </div>
+
+                                <div className={`bg-white rounded-3xl shadow-xl border p-4 md:p-5 relative transition-all ${editingId ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200'}`}>
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 pb-3 border-b border-slate-100 gap-2">
+                                        <h3 className="font-black text-lg text-indigo-900 flex items-center gap-2">
+                                            <Icon name={editingId ? "edit" : "plus"} size={20} /> {editingId ? "Editando" : "Nueva Bobina"}
+                                        </h3>
+                                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                                            <input type="date" className="flex-1 md:flex-none bg-slate-50 outline-none text-xs font-bold text-slate-600 rounded-lg px-2 py-2 cursor-pointer border border-slate-200" value={formData.fecha} onChange={e => updateField('fecha', e.target.value)} />
+                                            <button onClick={() => setIsRelabelScanning(true)} className="flex-1 md:flex-none justify-center bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg font-bold flex items-center gap-2 text-emerald-800 text-xs">
+                                                <Icon name="camera" size={14} /> Re-Etiquetar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 relative">
+                                        <div className="xl:col-span-5 space-y-2">
+                                            <div className="relative dropdown-container">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">SKU / Artículo</label>
+                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-black text-indigo-900 bg-slate-50" value={formData.sku} onChange={e => updateField('sku', e.target.value)} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..." />
+                                                {activeDropdown === 'sku' && (
+                                                    <div className="absolute z-[9999] top-full left-0 mt-2 w-[450px] bg-white border shadow-2xl rounded-2xl max-h-[300px] overflow-y-auto overflow-x-hidden">
+                                                        <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-900 border-b">Catálogo de Excel ({insumosDB.length})</div>
+                                                        {insumosDB.filter(item => {
+                                                            const norm = str => String(str || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+                                                            return formData.sku ? norm(item.sku).includes(norm(formData.sku)) : true;
+                                                        }).filter((item, idx, self) => idx === self.findIndex(t => t.sku === item.sku))
+                                                            .map((item, idx) => (
+                                                                <div key={idx} className="p-4 hover:bg-slate-50 border-b cursor-pointer w-full text-left" onMouseDown={(e) => { e.preventDefault(); updateField('sku', item.sku); updateField('tipo', item.tipo); updateField('gramaje', item.gramaje); updateField('ancho', item.ancho); updateField('proveedor', item.proveedor); setActiveDropdown(null); }}>
+                                                                    <div className="font-black text-slate-900 text-sm">{item.sku}</div>
+                                                                    <div className="text-slate-600 text-xs">{item.tipo} | {item.gramaje}g | {item.ancho}mm</div>
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Descripción de Papel</label>
+                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-bold text-slate-700 uppercase" value={formData.tipo} onChange={e => updateField('tipo', e.target.value)} onFocus={() => setActiveDropdown('tipo')} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Gramaje</label><input className="w-full h-9 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 outline-none font-bold uppercase text-sm" value={formData.gramaje} onChange={e => updateField('gramaje', e.target.value)} /></div>
+                                                <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Ancho Orig.</label><input className="w-full h-9 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 outline-none font-bold uppercase text-sm" value={formData.ancho} onChange={e => updateField('ancho', e.target.value)} /></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="xl:col-span-4 space-y-2">
+                                            <div className="relative dropdown-container">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Proveedor Oficial</label>
+                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase text-sm" value={formData.proveedor} onChange={e => updateField('proveedor', e.target.value)} onFocus={() => setActiveDropdown('proveedor')} />
+                                                {activeDropdown === 'proveedor' && (
+                                                    <div className="absolute z-[9999] top-full left-0 mt-2 w-full bg-white shadow-2xl rounded-xl max-h-[250px] overflow-y-auto border">
+                                                        {insumosDB.filter((item, idx, self) => idx === self.findIndex(t => t.proveedor === item.proveedor)).map((item, idx) => (
+                                                            <div key={idx} className="p-3 hover:bg-slate-100 cursor-pointer font-bold uppercase text-sm border-b" onMouseDown={(e) => { e.preventDefault(); updateField('proveedor', item.proveedor); setActiveDropdown(null); }}>{item.proveedor}</div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lote Prov. (Fábrica)</label><input className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold uppercase text-sm" value={formData.loteMadre} onChange={e => updateField('loteMadre', e.target.value)} /></div>
+                                            <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lote Prod. (Molderil)</label><input className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold uppercase text-sm" value={formData.loteHija} onChange={e => updateField('loteHija', e.target.value)} /></div>
+                                        </div>
+
+                                        <div className="xl:col-span-3 flex flex-col justify-end bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                                            <div className="mb-2"><label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 text-center">Ancho Hija (Corte mm)</label><input className="w-full h-9 text-center font-bold text-sm rounded-xl border-2 border-indigo-100 outline-none" placeholder="Opcional" value={formData.corte} onChange={e => updateField('corte', e.target.value)} /></div>
+                                            <div><label className="block text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 text-center">PESO NETO</label><div className="relative"><input className="w-full h-12 text-center font-black text-indigo-700 text-2xl rounded-xl border-2 border-indigo-400 outline-none pr-8" placeholder="0.00" value={formData.kg} onChange={e => updateField('kg', e.target.value)} /><span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-indigo-400 text-sm">KG</span></div></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-col md:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
+                                        {editingId && <button onClick={cancelEdit} className="w-full md:w-auto px-5 py-3 md:py-2 rounded-xl font-bold bg-slate-100 text-sm">Cancelar</button>}
+                                        <button onClick={() => setFormData(getNewFormData())} className="w-full md:w-auto px-5 py-3 md:py-2 rounded-xl font-bold border border-slate-200 text-sm">Limpiar</button>
+                                        <button onClick={submitForm} className={`w-full md:w-auto justify-center px-8 py-3 md:py-2 rounded-xl font-black text-white shadow-xl text-sm flex gap-2 items-center ${editingId ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name={editingId ? "save" : "plus"} size={16} />{editingId ? "Actualizar Fila" : "Agregar a la Lista"}</button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-3">
+                                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h4 className="font-extrabold text-slate-800 flex items-center gap-2">Resumen de Carga ({rows.length} bobinas)</h4></div>
+                                    {rows.length === 0 ? (<div className="p-12 text-center text-slate-400 font-bold">No hay bobinas ingresadas en esta sesión.</div>) : (
+                                        <div className="overflow-x-auto"><table className="w-full text-left whitespace-nowrap min-w-max">
+                                            <thead className="bg-white border-b border-slate-200"><tr>
+                                                <th className="px-4 py-2 text-[10px] font-black text-slate-400">#</th><th className="px-4 py-2 text-[10px] font-black text-slate-400">SKU</th><th className="px-4 py-2 text-[10px] font-black text-slate-400">TIPO</th><th className="px-4 py-2 text-[10px] font-black text-slate-400">PROVEEDOR</th><th className="px-4 py-2 text-[10px] font-black text-slate-400">LOTE</th><th className="px-4 py-2 text-[10px] font-black text-indigo-500 text-right">KILOS</th><th className="px-4 py-2 text-[10px] font-black text-slate-400 text-center">ACCIONES</th>
+                                            </tr></thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {rows.map((row, idx) => (
+                                                    <tr key={row.id} className={`hover:bg-indigo-50/50 ${editingId === row.id ? 'bg-amber-50' : ''}`}>
+                                                        <td className="px-4 py-2 font-mono text-[10px] font-bold text-slate-500">{idx + 1}</td>
+                                                        <td className="px-4 py-2 font-black text-indigo-900 text-xs">{row.sku}</td>
+                                                        <td className="px-4 py-2 font-bold text-slate-600 text-[10px]">{row.tipo}</td>
+                                                        <td className="px-4 py-2 font-bold text-slate-600 text-[10px]">{row.proveedor}</td>
+                                                        <td className="px-4 py-2 font-mono font-bold text-slate-700 text-[10px]">{row.loteHija}</td>
+                                                        <td className="px-4 py-2 font-black text-indigo-600 text-sm text-right">{row.kg} kg</td>
+                                                        <td className="px-4 py-2 text-center">
+                                                            <div className="flex justify-center gap-2">
+                                                                <button onClick={() => startEdit(row)} className="text-amber-500 bg-amber-50 hover:bg-amber-100 p-2 rounded-lg font-bold text-xs">Editar</button>
+                                                                <button onClick={() => handlePreview(row)} className="text-indigo-500 bg-indigo-50 p-2 rounded-lg"><Icon name="tag" size={16} /></button>
+                                                                <button onClick={() => removeRow(row.id)} className="text-red-500 bg-red-50 p-2 rounded-lg"><Icon name="trash" size={16} /></button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table></div>
+                                    )}
+                                </div>
+                            </div>
+                        </main>
+
+                        <div className="bg-white border-t border-slate-200 p-3 md:p-4 flex flex-col md:flex-row justify-between items-center z-20 gap-3 shadow-[-10px_0_40px_rgba(0,0,0,0.05)] w-full">
+                            <div className="flex flex-col items-center md:items-start w-full md:w-auto">
+                                <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">TOTAL KILOS</span>
+                                <span className="text-2xl md:text-3xl font-black text-indigo-900">{totalKg.toLocaleString('es-AR')} <span className="text-lg md:text-xl text-indigo-400">KG</span></span>
+                            </div>
+                            <button
+                                onClick={() => setShowCloseModal(true)}
+                                disabled={rows.length === 0}
+                                className={`w-full md:w-auto justify-center px-6 md:px-8 py-3 md:py-4 rounded-2xl font-black text-base md:text-lg flex items-center gap-2 transition-all ${rows.length === 0
+                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
+                                    }`}
+                            >
+                                <Icon name="printer" size={20} /> PROCESAR PDFs
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </main>
-        
-        <div className="bg-white border-t border-slate-200 p-4 md:p-6 flex flex-col md:flex-row justify-between items-center z-20 gap-4 shadow-[-10px_0_40px_rgba(0,0,0,0.05)] w-full">
-            <div className="flex flex-col items-center md:items-start w-full md:w-auto">
-                <span className="text-xs md:text-sm font-black text-slate-400 uppercase tracking-widest">TOTAL KILOS</span>
-                <span className="text-3xl md:text-4xl font-black text-indigo-900">{totalKg.toLocaleString('es-AR')} <span className="text-xl md:text-2xl text-indigo-400">KG</span></span>
-            </div>
-            <button 
-                onClick={() => setShowCloseModal(true)} 
-                disabled={rows.length === 0}
-                className={`w-full md:w-auto justify-center px-6 md:px-10 py-4 md:py-5 rounded-2xl font-black text-lg md:text-xl flex items-center gap-2 transition-all ${
-                    rows.length === 0 
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
-                    : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
-                }`}
-            >
-                <Icon name="printer" size={24} /> PROCESAR PDFs
-            </button>
-        </div>
-    </div>
-</div>
             );
         };
 
@@ -909,4 +965,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
