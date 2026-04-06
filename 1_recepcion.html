@@ -635,10 +635,41 @@
 <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
     {showHelp && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
-            <div className="bg-white p-8 rounded-3xl w-full max-w-lg shadow-2xl">
-                <h3 className="font-black text-2xl mb-4">Manual de Ayuda</h3>
-                <ul className="space-y-4 text-slate-600 font-medium"><li>Formulario Maestro: editas arriba y guardas en la grilla abajo.</li></ul>
-                <button onClick={() => setShowHelp(false)} className="mt-8 bg-slate-900 text-white w-full py-4 rounded-xl font-bold">Cerrar Ayuda</button>
+            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
+                <div className="sticky top-0 bg-white pb-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <h3 className="font-black text-2xl text-indigo-900 flex items-center gap-3">
+                        <Icon name="tag" size={28} /> Manual de Recepción
+                    </h3>
+                    <button onClick={() => setShowHelp(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full w-10 h-10 font-black text-xl flex items-center justify-center transition-colors">✕</button>
+                </div>
+                
+                <div className="overflow-y-auto overflow-x-hidden pr-2 flex-1 mt-6 space-y-8 custom-scrollbar">
+                    
+                    <div className="space-y-3">
+                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">1</span> Determinar el Contexto</h4>
+                        <p className="text-slate-600 text-sm leading-relaxed px-10">En la parte superior, fije si va a registrar un <strong className="text-indigo-600">INGRESO DE PROVEEDOR</strong> (bobinas vírgenes recién compradas) o una <strong className="text-orange-500">DEVOLUCIÓN DE PRODUCCIÓN</strong> (material que regresa). Esto ajustará automáticamente el Proveedor y etiquetará el reporte final correctamente para la administración.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">2</span> Función de Escáner y Re-etiquetado</h4>
+                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use el botón <strong className="text-emerald-700">Re-Etiquetar</strong> para abrir la cámara. Si escanea un rótulo dañado de la fábrica, el sistema completará mágicamente todo el formulario con esos datos exactos, listo para re-imprimir un rótulo nuevo idéntico.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">3</span> Carga por Buscador (Autocompletado)</h4>
+                        <p className="text-slate-600 text-sm leading-relaxed px-10">Para carga manual, escriba parte del SKU o Tipo de Papel. Se desplegará una lista de sugerencias basada en la Base de Datos. Al hacer clic, completará Tipo, SKU, Proveedor, Gramaje y Ancho en un segundo.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-amber-100 text-amber-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">4</span> Cierre del Pallet o Recepción</h4>
+                        <p className="text-slate-600 text-sm leading-relaxed px-10">Una vez registradas todas las bobinas en la ventana inferior, toque el botón violeta <strong className="bg-indigo-600 text-white px-2 py-0.5 rounded">PROCESAR Pdfs</strong>. Esto le pedirá confirmar si desea <strong>Descargar</strong> el archivo PDF en el equipo actual o <strong>Compartirlo</strong> enviándolo directamente al teléfono o WhatsApp vinculado. Al finalizar se vaciará la lista.</p>
+                    </div>
+
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 mt-4 shrink-0">
+                    <button onClick={() => setShowHelp(false)} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors">Entendido</button>
+                </div>
             </div>
         </div>
     )}

@@ -43,7 +43,8 @@
                 trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
                 check: "M20 6L9 17l-5-5",
                 share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8 M16 6l-4-4-4 4 M12 2v13",
-                printer: "M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"
+                printer: "M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z",
+                tag: "M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"
             };
             return (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -137,6 +138,7 @@
 
             const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
             const [showCloseModal, setShowCloseModal] = useState(false);
+            const [showHelp, setShowHelp] = useState(false);
             const [scannedItems, setScannedItems] = useState(() => {
                 const saved = localStorage.getItem('molderilScanned');
                 if (saved) { try { return JSON.parse(saved); } catch (e) {} }
@@ -242,6 +244,9 @@
                             await drawBobinaLabelNative(doc, r, "MOLDERIL S.A.", qrData);
                         }
                         const fileName = `Despacho_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
+                        // Siempre descargamos una copia local como respaldo
+                        doc.save(fileName);
+                        
                         if (actionType === 'share') {
                             if (navigator.canShare) {
                                 try {
@@ -253,11 +258,8 @@
                                     });
                                 } catch (e) { console.log("Compartir cancelado o fallo", e); }
                             } else {
-                                alert("Tu navegador en PC no soporta abrir la ventana de compartir nativa. El documento se descargará para que lo envíes manualmente.");
-                                doc.save(fileName);
+                                alert("Tu navegador en PC no soporta abrir la ventana de compartir nativa. El documento se descargó exitosamente.");
                             }
-                        } else {
-                            doc.save(fileName);
                         }
                         
                         setScannedItems([]);
@@ -319,15 +321,52 @@
                             </div>
                         </div>
                     )}
+                    {showHelp && (
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+                            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
+                                <div className="sticky top-0 bg-white pb-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                                    <h3 className="font-black text-2xl text-violet-900 flex items-center gap-3">
+                                        <Icon name="tag" size={28} /> Manual de Salidas
+                                    </h3>
+                                    <button onClick={() => setShowHelp(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full w-10 h-10 font-black text-xl flex items-center justify-center transition-colors">✕</button>
+                                </div>
+                                
+                                <div className="overflow-y-auto overflow-x-hidden pr-2 flex-1 mt-6 space-y-8 custom-scrollbar">
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-violet-100 text-violet-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">1</span> Escáner Activo</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use el botón grande violeta a la izquierda para activar la cámara del dispositivo. Apunte con la cámara al código QR impreso en el rótulo de la bobina que está por salir de la fábrica.</p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">2</span> Sistema de Verificación</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Al escuchar el sonido de confirmación, la bobina aparecerá automáticamente en la lista derecha ("Registro de Salidas"). Si necesita remover un error, use el icono de cesto de basura rojo junto a cada lectura.</p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-amber-100 text-amber-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">3</span> Remito Final (PDF)</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Cuando la mula o auto elevador termine de cargar, presione <strong className="text-violet-700">CREAR REMITO DE SALIDA</strong>. Se agruparán todos los lotes leídos en un único documento de validación que podrá descargar a la PC o compartir al WhatsApp responsable.</p>
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-slate-100 mt-4 shrink-0">
+                                    <button onClick={() => setShowHelp(false)} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors">Entendido</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* NAVBAR */}
                     <nav className="bg-violet-900 shadow-xl px-4 sm:px-8 py-4 no-print flex justify-between items-center z-40 shrink-0 border-b-4 border-violet-500">
                         <div>
                             <span className="text-white text-lg font-black tracking-tighter uppercase block"><Icon name="box" size={16} /> Terminal Despacho</span>
                             <span className="text-violet-300 text-xs font-bold uppercase tracking-widest">MOLDERIL S.A.</span>
                         </div>
-                        <a href="index.html" className="text-white hover:text-violet-200 font-bold text-sm bg-violet-800 px-4 py-2 rounded-lg flex items-center gap-2 border border-violet-700 transition-colors">
-                            <Icon name="arrowLeft" size={14} /> Volver a Menú
-                        </a>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setShowHelp(true)} className="text-violet-200 hover:text-white font-bold text-sm bg-violet-800 px-4 py-2 rounded-lg flex items-center gap-2 border border-violet-700 transition-colors">
+                                <Icon name="tag" size={14} /> Ayuda
+                            </button>
+                            <a href="index.html" className="text-white hover:text-violet-200 font-bold text-sm bg-violet-800 px-4 py-2 rounded-lg flex items-center gap-2 border border-violet-700 transition-colors">
+                                <Icon name="arrowLeft" size={14} /> Volver a Menú
+                            </a>
+                        </div>
                     </nav>
 
                     <main className="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-900">
