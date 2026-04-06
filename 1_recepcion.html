@@ -399,6 +399,101 @@
                             styles: { fontSize: 8, cellPadding: 2 }
                         });
 
+                        // NEW SUMMARY PAGE
+                        const grouped = rows.reduce((acc, r) => {
+                            const key = r.sku || 'S/D';
+                            if (!acc[key]) {
+                                acc[key] = { sku: key, tipo: r.tipo || 'S/D', prov: r.proveedor || '', count: 0, totalKg: 0 };
+                            }
+                            acc[key].count += 1;
+                            const rkg = parseFloat(String(r.kg || '0').replace(',', '.')) || 0;
+                            acc[key].totalKg += rkg;
+                            return acc;
+                        }, {});
+                        const summaryList = Object.values(grouped);
+
+                        if (summaryList.length > 0) {
+                            doc.addPage('a4', 'portrait');
+                            
+                            doc.setFont("helvetica", "bold");
+                            doc.setFontSize(22);
+                            doc.setTextColor(30, 41, 59); // slate-800
+                            doc.text("RESUMEN AGRUPADO POR ARTÍCULO", 105, 25, { align: "center" });
+                            
+                            doc.setFontSize(10);
+                            doc.setTextColor(148, 163, 184); // slate-400
+                            doc.text(empresa, 105, 32, { align: "center" });
+
+                            let currentX = 10;
+                            let currentY = 45;
+                            const cardW = 90;
+                            const cardH = 45;
+                            const marginX = 10;
+                            const spacingX = 10;
+                            const spacingY = 10;
+
+                            for (let i = 0; i < summaryList.length; i++) {
+                                const item = summaryList[i];
+                                
+                                if (currentX + cardW > 200) { 
+                                    currentX = marginX; 
+                                    currentY += cardH + spacingY; 
+                                }
+                                if (currentY + cardH > 280) { 
+                                    doc.addPage('a4', 'portrait'); 
+                                    currentY = 20; 
+                                    currentX = marginX; 
+                                }
+
+                                // Tarjeta: Fondo y Borde
+                                doc.setFillColor(248, 250, 252);
+                                doc.setDrawColor(203, 213, 225);
+                                doc.setLineWidth(0.5);
+                                doc.roundedRect(currentX, currentY, cardW, cardH, 3, 3, 'FD');
+
+                                // Cabecera (SKU y Tipo) - fondo muy suave, lo dibujamos como línea para separar
+                                doc.line(currentX, currentY + 24, currentX + cardW, currentY + 24);
+                                doc.line(currentX + cardW/2, currentY + 24, currentX + cardW/2, currentY + cardH);
+
+                                // SKU Header
+                                doc.setFontSize(7);
+                                doc.setTextColor(148, 163, 184);
+                                doc.text("SKU / ARTICULO", currentX + 4, currentY + 6);
+                                doc.setFontSize(12);
+                                doc.setTextColor(15, 23, 42); // slate-900
+                                doc.setFont("helvetica", "bold");
+                                doc.text(doc.splitTextToSize(item.sku, cardW - 8), currentX + 4, currentY + 11);
+                                
+                                // Tipo
+                                doc.setFont("helvetica", "normal");
+                                doc.setFontSize(9);
+                                doc.setTextColor(71, 85, 105); // slate-600
+                                const splitTipo = doc.splitTextToSize(item.tipo, cardW - 8);
+                                doc.text(splitTipo, currentX + 4, currentY + 18);
+
+                                // Cantidad (Bobinas)
+                                doc.setFontSize(7);
+                                doc.setTextColor(148, 163, 184);
+                                doc.setFont("helvetica", "bold");
+                                doc.text("BOBINAS (CANT)", currentX + (cardW/4), currentY + 30, { align: "center" });
+                                doc.setFontSize(22);
+                                doc.setTextColor(51, 65, 85); // slate-700
+                                doc.text(item.count.toString(), currentX + (cardW/4), currentY + 40, { align: "center" });
+
+                                // Kilos
+                                doc.setFontSize(7);
+                                doc.setTextColor(148, 163, 184);
+                                doc.text("PESO AGRUPADO", currentX + (cardW * 0.75), currentY + 30, { align: "center" });
+                                doc.setFontSize(24);
+                                doc.setTextColor(37, 99, 235); // blue-600
+                                const kgText = item.totalKg % 1 === 0 ? item.totalKg.toString() : item.totalKg.toFixed(2);
+                                doc.text(kgText + " kg", currentX + (cardW * 0.75), currentY + 40, { align: "center" });
+
+                                currentX += cardW + spacingX;
+                            }
+                        }
+                        // END NEW SUMMARY PAGE
+
                         for (let i = 0; i < rows.length; i++) {
                             doc.addPage('a4', 'portrait');
                             const row = rows[i];
@@ -562,29 +657,29 @@
     </nav>
 
     <div className="flex-1 flex flex-col h-screen overflow-hidden pb-16 md:pb-0">
-        <header className="bg-white border-b border-slate-200 px-8 py-5 flex justify-between items-center no-print z-10">
-            <div className="flex items-center gap-4">
+        <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 md:py-5 flex flex-col md:flex-row justify-between items-start md:items-center flex-wrap gap-4 no-print z-10 w-full">
+            <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto">
                 <h2 className="text-2xl font-black text-slate-800">Panel de Carga</h2>
-                {!isAutoLoadingDB && insumosDB.length === 0 && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-300">⚠️ Falta Base datos Excel</span>}
+                {!isAutoLoadingDB && insumosDB.length === 0 && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-300">⚠️ Falta Base datos</span>}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto">
                 <input type="file" id="json-upload" accept=".json" className="hidden" onChange={importarProyecto} />
-                <button onClick={borrarTodo} className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 font-bold rounded-xl text-sm hover:bg-red-100 flex items-center gap-1"><Icon name="trash" size={16}/> Borrar todo</button>
-                <button onClick={() => document.getElementById('json-upload').click()} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="folder" size={16}/> Sesión</button>
-                <button onClick={exportarProyecto} className="bg-slate-50 border border-slate-200 px-4 py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="save" size={16}/> Guardar</button>
+                <button onClick={borrarTodo} className="flex-1 md:flex-none justify-center bg-red-50 text-red-600 border border-red-200 px-4 py-3 md:py-2 font-bold rounded-xl text-sm hover:bg-red-100 flex items-center gap-1"><Icon name="trash" size={16}/> Borrar todo</button>
+                <button onClick={() => document.getElementById('json-upload').click()} className="flex-1 md:flex-none justify-center bg-slate-50 border border-slate-200 px-4 py-3 md:py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="folder" size={16}/> Sesión</button>
+                <button onClick={exportarProyecto} className="flex-1 md:flex-none justify-center w-full md:w-auto mt-2 md:mt-0 bg-slate-50 border border-slate-200 px-4 py-3 md:py-2 font-bold rounded-xl text-sm hover:bg-slate-100 flex items-center gap-1"><Icon name="save" size={16}/> Guardar</button>
             </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-8 pb-10">
-                <div className={`bg-white rounded-3xl shadow-xl border p-6 relative transition-all ${editingId ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200'}`}>
-                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                        <h3 className="font-black text-xl text-indigo-900 flex items-center gap-2">
-                            <Icon name={editingId ? "edit" : "plus"} size={24} /> {editingId ? "Editando Bobina Seleccionada" : "Nueva Bobina (Carga Rápida)"}
+                <div className={`bg-white rounded-3xl shadow-xl border p-4 md:p-6 relative transition-all ${editingId ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200'}`}>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-100 gap-4">
+                        <h3 className="font-black text-lg md:text-xl text-indigo-900 flex items-center gap-2">
+                            <Icon name={editingId ? "edit" : "plus"} size={24} /> {editingId ? "Editando" : "Nueva Bobina"}
                         </h3>
-                        <div className="flex items-center gap-4">
-                            <input type="date" className="bg-slate-50 outline-none text-sm font-bold text-slate-600 rounded-lg px-3 py-2 cursor-pointer" value={formData.fecha} onChange={e => updateField('fecha', e.target.value)} />
-                            <button onClick={() => setIsRelabelScanning(true)} className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-emerald-800 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto">
+                            <input type="date" className="flex-1 md:flex-none bg-slate-50 outline-none text-sm font-bold text-slate-600 rounded-lg px-3 py-3 md:py-2 cursor-pointer border border-slate-200" value={formData.fecha} onChange={e => updateField('fecha', e.target.value)} />
+                            <button onClick={() => setIsRelabelScanning(true)} className="flex-1 md:flex-none justify-center bg-emerald-50 border border-emerald-200 px-4 py-3 md:py-2 rounded-lg font-bold flex items-center gap-2 text-emerald-800 text-sm">
                                 <Icon name="camera" size={16}/> Re-Etiquetar
                             </button>
                         </div>
@@ -642,10 +737,10 @@
                         </div>
                     </div>
 
-                    <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
-                        {editingId && <button onClick={cancelEdit} className="px-6 py-4 rounded-xl font-bold bg-slate-100">Cancelar</button>}
-                        <button onClick={() => setFormData(getNewFormData())} className="px-6 py-4 rounded-xl font-bold border border-slate-200">Limpiar</button>
-                        <button onClick={submitForm} className={`px-10 py-4 rounded-xl font-black text-white shadow-xl text-lg flex gap-2 ${editingId ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name={editingId ? "save" : "plus"} size={20} />{editingId ? "Actualizar Fila" : "Agregar a la Lista"}</button>
+                    <div className="mt-8 flex flex-col md:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
+                        {editingId && <button onClick={cancelEdit} className="w-full md:w-auto px-6 py-4 md:py-4 rounded-xl font-bold bg-slate-100">Cancelar</button>}
+                        <button onClick={() => setFormData(getNewFormData())} className="w-full md:w-auto px-6 py-4 md:py-4 rounded-xl font-bold border border-slate-200">Limpiar</button>
+                        <button onClick={submitForm} className={`w-full md:w-auto justify-center px-10 py-4 md:py-4 rounded-xl font-black text-white shadow-xl text-lg flex gap-2 ${editingId ? 'bg-amber-500' : 'bg-indigo-600'}`}><Icon name={editingId ? "save" : "plus"} size={20} />{editingId ? "Actualizar Fila" : "Agregar a la Lista"}</button>
                     </div>
                 </div>
 
@@ -681,9 +776,12 @@
             </div>
         </main>
         
-        <div className="bg-white border-t border-slate-200 p-6 flex justify-between items-center z-20 shadow-[-10px_0_40px_rgba(0,0,0,0.05)]">
-            <div className="flex flex-col"><span className="text-sm font-black text-slate-400 uppercase tracking-widest">Albarán Total</span><span className="text-4xl font-black text-indigo-900">{totalKg.toLocaleString('es-AR')} <span className="text-2xl text-indigo-400">KG</span></span></div>
-            <button onClick={() => setShowCloseModal(true)} className="bg-emerald-500 text-white px-10 py-5 rounded-2xl font-black text-xl flex items-center gap-2"><Icon name="printer" size={24} /> PROCESAR PDFs</button>
+        <div className="bg-white border-t border-slate-200 p-4 md:p-6 flex flex-col md:flex-row justify-between items-center z-20 gap-4 shadow-[-10px_0_40px_rgba(0,0,0,0.05)] w-full">
+            <div className="flex flex-col items-center md:items-start w-full md:w-auto">
+                <span className="text-xs md:text-sm font-black text-slate-400 uppercase tracking-widest">Albarán Total</span>
+                <span className="text-3xl md:text-4xl font-black text-indigo-900">{totalKg.toLocaleString('es-AR')} <span className="text-xl md:text-2xl text-indigo-400">KG</span></span>
+            </div>
+            <button onClick={() => setShowCloseModal(true)} className="w-full md:w-auto justify-center bg-emerald-500 text-white px-6 md:px-10 py-4 md:py-5 rounded-2xl font-black text-lg md:text-xl flex items-center gap-2"><Icon name="printer" size={24} /> PROCESAR PDFs</button>
         </div>
     </div>
 </div>
