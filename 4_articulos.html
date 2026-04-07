@@ -143,9 +143,12 @@
             const startEdit = (row) => { setEditingId(row.id); setFormData(row); window.scrollTo(0, 0); };
             const removeRow = (id) => { if(window.confirm("¿Eliminar artículo?")) setArticulos(prev => prev.filter(r => r.id !== id)); };
 
-            const filteredArticulos = articulos.filter(a => 
-                (a.sku + a.tipo + a.proveedor).toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const filteredArticulos = articulos.filter(a => {
+                const search = searchTerm.toLowerCase();
+                return a.sku.toLowerCase().includes(search) || 
+                       a.tipo.toLowerCase().includes(search) || 
+                       a.proveedor.toLowerCase().includes(search);
+            });
 
             return (
 <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800 font-sans">
@@ -231,7 +234,7 @@
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Proveedor</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.proveedor} onChange={e => updateField('proveedor', e.target.value)} placeholder="Ej. Ledesma"/></div>
-                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU / Artículo</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 outline-none font-black text-purple-900 uppercase" value={formData.sku} onChange={e => updateField('sku', e.target.value)} /></div>
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">SKU / Artículo</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 outline-none font-mono font-bold text-purple-700 uppercase tracking-wider" value={formData.sku} onChange={e => updateField('sku', e.target.value)} /></div>
                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Tipo Papel</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.tipo} onChange={e => updateField('tipo', e.target.value)} /></div>
                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Gramaje</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.gramaje} onChange={e => updateField('gramaje', e.target.value)} placeholder="Ej. 65" /></div>
                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Ancho Orig.</label><input className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 outline-none font-bold uppercase" value={formData.ancho} onChange={e => updateField('ancho', e.target.value)} placeholder="Ej. 1200" /></div>
@@ -262,7 +265,7 @@
                                 {filteredArticulos.map((row) => (
                                     <tr key={row.id} className={`hover:bg-purple-50/50 ${editingId === row.id ? 'bg-amber-50' : ''}`}>
                                         <td className="px-6 py-3 font-bold text-slate-600 text-sm">{row.proveedor}</td>
-                                        <td className="px-6 py-3 font-black text-purple-900 text-sm">{row.sku}</td>
+                                        <td className="px-6 py-3 font-mono font-bold text-purple-700 text-sm tracking-wider">{row.sku}</td>
                                         <td className="px-6 py-3 font-bold text-slate-600 text-sm">{row.tipo}</td>
                                         <td className="px-6 py-3 font-mono font-bold text-slate-700 text-sm">{row.gramaje}</td>
                                         <td className="px-6 py-3 font-mono font-bold text-slate-700 text-sm">{row.ancho}</td>
