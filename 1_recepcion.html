@@ -426,7 +426,16 @@
             };
 
             const submitForm = () => {
-                if (!formData.kg || !formData.tipo || !formData.sku) { alert("Completa SKU, Tipo y KG."); return; }
+                const faltantes = [];
+                if (!formData.sku) faltantes.push("SKU / Artículo");
+                if (!formData.tipo) faltantes.push("Descripción de Papel (Tipo)");
+                if (!formData.kg) faltantes.push("Peso Neto (KG)");
+                
+                if (faltantes.length > 0) {
+                    alert("Acción rechazada. Te falta completar los siguientes campos obligatorios:\n\n- " + faltantes.join("\n- ") + "\n\nPor favor, revísalos e inténtalo de nuevo.");
+                    return;
+                }
+
                 const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
                 const exactMatch = insumosDB.find(item => norm(item.sku) === norm(formData.sku));
                 if (!exactMatch) {
