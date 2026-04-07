@@ -404,8 +404,35 @@
                 setFormData(prev => ({ ...prev, [field]: upperValue }));
             };
 
+            const handleSkuChange = (e) => {
+                const value = e.target.value.toUpperCase();
+                if (value === '') {
+                    updateField('sku', value);
+                    return;
+                }
+                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                const valNorm = norm(value);
+                
+                // Block typing if the substring doesn't match any SKU in DB
+                const isValidSubstring = insumosDB.some(item => norm(item.sku).includes(valNorm));
+                if (isValidSubstring) {
+                    updateField('sku', value);
+                    // Autofill if it matches exactly
+                    const exactMatch = insumosDB.find(item => norm(item.sku) === valNorm);
+                    if (exactMatch) {
+                        setFormData(prev => ({ ...prev, sku: value, tipo: exactMatch.tipo, gramaje: exactMatch.gramaje, ancho: exactMatch.ancho, proveedor: exactMatch.proveedor }));
+                    }
+                }
+            };
+
             const submitForm = () => {
-                if (!formData.kg || !formData.tipo) { alert("Completa Tipo y KG."); return; }
+                if (!formData.kg || !formData.tipo || !formData.sku) { alert("Completa SKU, Tipo y KG."); return; }
+                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                const exactMatch = insumosDB.find(item => norm(item.sku) === norm(formData.sku));
+                if (!exactMatch) {
+                    alert("El SKU ingresado está incompleto o no es válido según la base de datos.");
+                    return;
+                }
                 if (editingId) {
                     setRows(prev => prev.map(r => r.id === editingId ? formData : r));
                     setEditingId(null);
@@ -852,7 +879,7 @@
                                         <div className="xl:col-span-5 space-y-2">
                                             <div className="relative dropdown-container">
                                                 <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">SKU / Artículo</label>
-                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-500 focus:border-indigo-500 outline-none text-sm font-black text-slate-900 bg-slate-50" value={formData.sku} onChange={e => updateField('sku', e.target.value)} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..." />
+                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-500 focus:border-indigo-500 outline-none text-sm font-black text-slate-900 bg-slate-50" value={formData.sku} onChange={handleSkuChange} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..." />
                                                 {activeDropdown === 'sku' && (
                                                     <div className="absolute z-[9999] top-full left-0 mt-2 w-[450px] bg-white border shadow-2xl rounded-2xl max-h-[300px] overflow-y-auto overflow-x-hidden">
                                                         <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-900 border-b">Catálogo de Excel ({insumosDB.length})</div>
@@ -874,8 +901,8 @@
                                                 <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-500 focus:border-indigo-500 outline-none text-sm font-black text-slate-900 uppercase" value={formData.tipo} onChange={e => updateField('tipo', e.target.value)} onFocus={() => setActiveDropdown('tipo')} />
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div><label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">Gramaje</label><input className="w-full h-9 px-3 rounded-xl border-2 border-slate-500 bg-slate-50 outline-none font-black text-slate-900 uppercase text-sm" value={formData.gramaje} onChange={e => updateField('gramaje', e.target.value)} /></div>
-                                                <div><label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">Ancho Original</label><input className="w-full h-9 px-3 rounded-xl border-2 border-slate-500 bg-slate-50 outline-none font-black text-slate-900 uppercase text-sm" value={formData.ancho} onChange={e => updateField('ancho', e.target.value)} /></div>
+                                                <div><label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">Gramaje</label><input readOnly className="w-full h-9 px-3 rounded-xl border-2 border-slate-300 bg-slate-200 outline-none font-black text-slate-500 uppercase text-sm cursor-not-allowed" value={formData.gramaje} /></div>
+                                                <div><label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">Ancho Original</label><input readOnly className="w-full h-9 px-3 rounded-xl border-2 border-slate-300 bg-slate-200 outline-none font-black text-slate-500 uppercase text-sm cursor-not-allowed" value={formData.ancho} /></div>
                                             </div>
                                         </div>
 
