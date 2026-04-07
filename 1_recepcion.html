@@ -405,6 +405,7 @@
             };
 
             const handleSkuChange = (e) => {
+                setActiveDropdown('sku'); // Forzar que la lista vuelva a abrirse si estaba cerrada
                 const value = e.target.value.toUpperCase();
                 if (value === '') {
                     updateField('sku', value);
