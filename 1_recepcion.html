@@ -425,7 +425,28 @@
                 }
             };
 
+            const handleSkuBlur = (e) => {
+                const currentSku = e.target.value;
+                if (!currentSku) return;
+                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                const exactMatch = insumosDB.find(item => norm(item.sku) === norm(currentSku));
+                
+                // Si al salir del casillero no es exacto, vaciamos estos campos
+                if (!exactMatch) {
+                    setFormData(prev => ({ ...prev, tipo: '', proveedor: '', gramaje: '', ancho: '' }));
+                }
+            };
+
             const submitForm = () => {
+                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                if (formData.sku) {
+                    const exactMatch = insumosDB.find(item => norm(item.sku) === norm(formData.sku));
+                    if (!exactMatch) {
+                        alert("SKU / ARTÍCULOS: artículo no válido.");
+                        return;
+                    }
+                }
+
                 const faltantes = [];
                 if (!formData.sku) faltantes.push("SKU / Artículo");
                 if (!formData.tipo) faltantes.push("Descripción de Papel (Tipo)");
@@ -433,13 +454,6 @@
                 
                 if (faltantes.length > 0) {
                     alert("Acción rechazada. Te falta completar los siguientes campos obligatorios:\n\n- " + faltantes.join("\n- ") + "\n\nPor favor, revísalos e inténtalo de nuevo.");
-                    return;
-                }
-
-                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                const exactMatch = insumosDB.find(item => norm(item.sku) === norm(formData.sku));
-                if (!exactMatch) {
-                    alert("El SKU ingresado está incompleto o no es válido según la base de datos.");
                     return;
                 }
                 if (editingId) {
@@ -888,7 +902,7 @@
                                         <div className="xl:col-span-5 space-y-2">
                                             <div className="relative dropdown-container">
                                                 <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">SKU / Artículo</label>
-                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-500 focus:border-indigo-500 outline-none text-sm font-black text-slate-900 bg-slate-50" value={formData.sku} onChange={handleSkuChange} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..." />
+                                                <input className="w-full h-10 px-3 rounded-xl border-2 border-slate-500 focus:border-indigo-500 outline-none text-sm font-black text-slate-900 bg-slate-50" value={formData.sku} onChange={handleSkuChange} onBlur={handleSkuBlur} onFocus={() => setActiveDropdown('sku')} placeholder="Buscar..." />
                                                 {activeDropdown === 'sku' && (
                                                     <div className="absolute z-[9999] top-full left-0 mt-2 w-[450px] bg-white border shadow-2xl rounded-2xl max-h-[300px] overflow-y-auto overflow-x-hidden">
                                                         <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-900 border-b">Catálogo de Excel ({insumosDB.length})</div>
