@@ -139,6 +139,8 @@
             const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
             const [showCloseModal, setShowCloseModal] = useState(false);
             const [showHelp, setShowHelp] = useState(false);
+            const [insumosDB, setInsumosDB] = useState([]);
+            const [isAutoLoadingDB, setIsAutoLoadingDB] = useState(true);
             const [scannedItems, setScannedItems] = useState(() => {
                 const saved = localStorage.getItem('molderilScanned');
                 if (saved) { try { return JSON.parse(saved); } catch (e) {} }
@@ -149,6 +151,33 @@
             const lastScannedTime = useRef(0);
 
             useEffect(() => { localStorage.setItem('molderilScanned', JSON.stringify(scannedItems)); }, [scannedItems]);
+
+            useEffect(() => {
+                const cargarBaseDatosAutomatica = async () => {
+                    try {
+                        const response = await fetch('./BOBINAS.xlsx');
+                        if (!response.ok) throw new Error("No se pudo hallar archivo");
+                        const arrayBuffer = await response.arrayBuffer();
+                        const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+                        const parsed = [];
+                        for (let i = 1; i < data.length; i++) {
+                            const r = data[i];
+                            if (Array.isArray(r) && r.join("").trim() !== "") {
+                                parsed.push({
+                                    proveedor: String(r[0] || '').trim().toUpperCase(),
+                                    sku: String(r[1] || '').trim().toUpperCase(),
+                                    tipo: String(r[2] || '').trim().toUpperCase(),
+                                    gramaje: String(r[3] || '').trim().toUpperCase(),
+                                    ancho: String(r[4] || '').trim().toUpperCase()
+                                });
+                            }
+                        }
+                        if (parsed.length > 0) setInsumosDB(parsed);
+                    } catch (error) { console.warn("Error cargando BD", error); } finally { setIsAutoLoadingDB(false); }
+                };
+                cargarBaseDatosAutomatica();
+            }, []);
 
             const closeOutputScanner = () => {
                 if (scannerRef.current) {
@@ -165,21 +194,47 @@
                             if (Date.now() - lastScannedTime.current < 2000) return;
                             lastScannedTime.current = Date.now();
 
+                            let isValid = false;
+                            let parts = [];
+
                             if (decodedText.startsWith("MOLDERIL SA")) {
-                                const parts = decodedText.split(" | ");
+                                isValid = true;
+                                parts = decodedText.split(" | ");
+                            } else if (decodedText.startsWith("UID:") && decodedText.includes("SKU:")) {
+                                isValid = true;
+                                parts = decodedText.split("|");
+                            }
+
+                            if (isValid) {
                                 let newItem = { uid: '', proveedor: '', tipo: '', kg: '', loteMadre: '', loteHija: '', corte: '', sku: '', gramaje: '', ancho: '', fecha: today };
                                 parts.forEach(p => {
-                                    if (p.startsWith("UID: ")) newItem.uid = p.replace("UID: ", "");
-                                    if (p.startsWith("PROV: ")) newItem.proveedor = p.replace("PROV: ", "");
-                                    if (p.startsWith("TIPO: ")) newItem.tipo = p.replace("TIPO: ", "");
-                                    if (p.startsWith("KG: ")) newItem.kg = p.replace("KG: ", "");
-                                    if (p.startsWith("L.MADRE: ")) newItem.loteMadre = p.replace("L.MADRE: ", "");
-                                    if (p.startsWith("L.HIJA: ")) newItem.loteHija = p.replace("L.HIJA: ", "");
-                                    if (p.startsWith("CORTE: ")) newItem.corte = p.replace("CORTE: ", "");
-                                    if (p.startsWith("SKU: ")) newItem.sku = p.replace("SKU: ", "");
-                                    if (p.startsWith("GRAMAJE: ")) newItem.gramaje = p.replace("GRAMAJE: ", "");
-                                    if (p.startsWith("ANCHO: ")) newItem.ancho = p.replace("ANCHO: ", "");
+                                    if (p === "MOLDERIL SA") return;
+                                    const idx = p.indexOf(":");
+                                    if (idx === -1) return;
+                                    const val = p.substring(idx + 1).trim();
+
+                                    if (p.startsWith("UID:")) newItem.uid = val;
+                                    else if (p.startsWith("PROV:")) newItem.proveedor = val;
+                                    else if (p.startsWith("TIPO:")) newItem.tipo = val;
+                                    else if (p.startsWith("KG:")) newItem.kg = val;
+                                    else if (p.startsWith("L.PROV:")) newItem.loteMadre = val;
+                                    else if (p.startsWith("L.PROD:")) newItem.loteHija = val;
+                                    else if (p.startsWith("A.HIJA:")) newItem.corte = val;
+                                    else if (p.startsWith("SKU:")) newItem.sku = val;
+                                    else if (p.startsWith("GRAMAJE:")) newItem.gramaje = val;
+                                    else if (p.startsWith("ANCHO:")) newItem.ancho = val;
+                                    else if (p.startsWith("FECHA:")) newItem.fecha = val;
                                 });
+
+                                // Buscar datos base en caso de un QR simplificado sin gramaje/ancho
+                                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                                if (newItem.sku && insumosDB.length > 0) {
+                                    const exactMatch = insumosDB.find(item => norm(item.sku) === norm(newItem.sku));
+                                    if (exactMatch) {
+                                        if (!newItem.gramaje) newItem.gramaje = exactMatch.gramaje;
+                                        if (!newItem.ancho) newItem.ancho = exactMatch.ancho;
+                                    }
+                                }
 
                                 setScannedItems(prev => {
                                     if (prev.some(i => i.uid === newItem.uid)) return prev;
@@ -240,7 +295,7 @@
                         for (let i = 0; i < scannedItems.length; i++) {
                             doc.addPage('a4', 'portrait');
                             const r = scannedItems[i];
-                            const qrData = `MOLDERIL SA | UID: ${r.uid} | PROV: ${r.proveedor} | TIPO: ${r.tipo} | FECHA: ${r.fecha||''} | KG: ${r.kg} | L.PROV: ${r.loteMadre} | L.PROD: ${r.loteHija} | A.HIJA: ${r.corte||''} | SKU: ${r.sku} | GRAMAJE: ${r.gramaje} | ANCHO: ${r.ancho}`;
+                            const qrData = `UID:${r.uid}|OP:DESPACHO|PROV:${r.proveedor}|TIPO:${r.tipo}|FECHA:${r.fecha||''}|KG:${r.kg}|L.PROV:${r.loteMadre}|L.PROD:${r.loteHija}|A.HIJA:${r.corte||''}|SKU:${r.sku}`;
                             await drawBobinaLabelNative(doc, r, "MOLDERIL S.A.", qrData);
                         }
                         const fileName = `Despacho_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;

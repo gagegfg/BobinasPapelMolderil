@@ -608,10 +608,9 @@
 
                         for (let i = 0; i < rows.length; i++) {
                             doc.addPage('a4', 'portrait');
-                            const row = rows[i];
-                            const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                            const qrData = `MOLDERIL SA | UID: ${row.uid} | OP: ${opType} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
-                            await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
+                                const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
+                                const qrData = `UID:${row.uid}|OP:${opType}|PROV:${row.proveedor}|TIPO:${row.tipo}|FECHA:${formatDateDisplay(row.fecha)}|KG:${row.kg}|L.PROV:${row.loteMadre}|L.PROD:${row.loteHija}|A.HIJA:${row.corte}|SKU:${row.sku}`;
+                                await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
                         }
 
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
@@ -660,22 +659,47 @@
                         (decodedText) => {
                             if (Date.now() - lastRelabelScannedTime.current < 2000) return;
                             lastRelabelScannedTime.current = Date.now();
+                            let isValid = false;
+                            let parts = [];
+
                             if (decodedText.startsWith("MOLDERIL SA")) {
-                                const parts = decodedText.split(" | ");
+                                isValid = true;
+                                parts = decodedText.split(" | ");
+                            } else if (decodedText.startsWith("UID:") && decodedText.includes("SKU:")) {
+                                isValid = true;
+                                parts = decodedText.split("|");
+                            }
+
+                            if (isValid) {
                                 let newRow = { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: 'Re-etiquetado' };
                                 parts.forEach(p => {
-                                    if (p.startsWith("UID: ")) newRow.uid = p.replace("UID: ", "");
-                                    if (p.startsWith("PROV: ")) newRow.proveedor = p.replace("PROV: ", "");
-                                    if (p.startsWith("TIPO: ")) newRow.tipo = p.replace("TIPO: ", "");
-                                    if (p.startsWith("KG: ")) newRow.kg = p.replace("KG: ", "");
-                                    if (p.startsWith("L.PROV: ")) newRow.loteMadre = p.replace("L.PROV: ", "");
-                                    if (p.startsWith("L.PROD: ")) newRow.loteHija = p.replace("L.PROD: ", "");
-                                    if (p.startsWith("A.HIJA: ")) newRow.corte = p.replace("A.HIJA: ", "");
-                                    if (p.startsWith("SKU: ")) newRow.sku = p.replace("SKU: ", "");
-                                    if (p.startsWith("GRAMAJE: ")) newRow.gramaje = p.replace("GRAMAJE: ", "");
-                                    if (p.startsWith("ANCHO: ")) newRow.ancho = p.replace("ANCHO: ", "");
-                                    if (p.startsWith("FECHA: ")) newRow.fecha = p.replace("FECHA: ", "");
+                                    if (p === "MOLDERIL SA") return;
+                                    const idx = p.indexOf(":");
+                                    if (idx === -1) return;
+                                    const val = p.substring(idx + 1).trim();
+                                    
+                                    if (p.startsWith("UID:")) newRow.uid = val;
+                                    else if (p.startsWith("PROV:")) newRow.proveedor = val;
+                                    else if (p.startsWith("TIPO:")) newRow.tipo = val;
+                                    else if (p.startsWith("KG:")) newRow.kg = val;
+                                    else if (p.startsWith("L.PROV:")) newRow.loteMadre = val;
+                                    else if (p.startsWith("L.PROD:")) newRow.loteHija = val;
+                                    else if (p.startsWith("A.HIJA:")) newRow.corte = val;
+                                    else if (p.startsWith("SKU:")) newRow.sku = val;
+                                    else if (p.startsWith("GRAMAJE:")) newRow.gramaje = val;
+                                    else if (p.startsWith("ANCHO:")) newRow.ancho = val;
+                                    else if (p.startsWith("FECHA:")) newRow.fecha = val;
                                 });
+                                
+                                // Buscamos en BD excel si falta algo (por ej. formato nuevo que no tiene gramaje/ancho en el QR)
+                                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                                if (newRow.sku && insumosDB.length > 0) {
+                                    const exactMatch = insumosDB.find(item => norm(item.sku) === norm(newRow.sku));
+                                    if (exactMatch) {
+                                        if (!newRow.gramaje) newRow.gramaje = exactMatch.gramaje;
+                                        if (!newRow.ancho) newRow.ancho = exactMatch.ancho;
+                                    }
+                                }
 
                                 playSuccessSound(); closeRelabelScanner();
                                 setPreviewRow(newRow); setPreviewPdfUrl(null);
@@ -710,7 +734,7 @@
                     try {
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
                         const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                        const qrData = `MOLDERIL SA | UID: ${row.uid} | OP: ${opType} | PROV: ${row.proveedor} | TIPO: ${row.tipo} | FECHA: ${formatDateDisplay(row.fecha)} | KG: ${row.kg} | L.PROV: ${row.loteMadre} | L.PROD: ${row.loteHija} | A.HIJA: ${row.corte} | SKU: ${row.sku} | GRAMAJE: ${row.gramaje} | ANCHO: ${row.ancho}`;
+                        const qrData = `UID:${row.uid}|OP:${opType}|PROV:${row.proveedor}|TIPO:${row.tipo}|FECHA:${formatDateDisplay(row.fecha)}|KG:${row.kg}|L.PROV:${row.loteMadre}|L.PROD:${row.loteHija}|A.HIJA:${row.corte}|SKU:${row.sku}`;
                         await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
                     } catch (err) { }
