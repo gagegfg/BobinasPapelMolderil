@@ -148,6 +148,7 @@
             });
             const [isOutputScanning, setIsOutputScanning] = useState(false);
             const scannerRef = useRef(null);
+            const insumosDBRef = useRef([]);
             const lastScannedTime = useRef(0);
 
             useEffect(() => { localStorage.setItem('molderilScanned', JSON.stringify(scannedItems)); }, [scannedItems]);
@@ -173,7 +174,10 @@
                                 });
                             }
                         }
-                        if (parsed.length > 0) setInsumosDB(parsed);
+                        if (parsed.length > 0) {
+                            setInsumosDB(parsed);
+                            insumosDBRef.current = parsed;
+                        }
                     } catch (error) { console.warn("Error cargando BD", error); } finally { setIsAutoLoadingDB(false); }
                 };
                 cargarBaseDatosAutomatica();
@@ -197,10 +201,10 @@
                             let isValid = false;
                             let parts = [];
 
-                            if (decodedText.startsWith("MOLDERIL SA")) {
+                            if (decodedText.includes("MOLDERIL SA")) {
                                 isValid = true;
                                 parts = decodedText.split(" | ");
-                            } else if (decodedText.startsWith("UID:") && decodedText.includes("SKU:")) {
+                            } else if (decodedText.includes("UID:") && decodedText.includes("SKU:")) {
                                 isValid = true;
                                 parts = decodedText.split("|");
                             }
@@ -228,8 +232,8 @@
 
                                 // Buscar datos base en caso de un QR simplificado sin gramaje/ancho
                                 const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                                if (newItem.sku && insumosDB.length > 0) {
-                                    const exactMatch = insumosDB.find(item => norm(item.sku) === norm(newItem.sku));
+                                if (newItem.sku && insumosDBRef.current.length > 0) {
+                                    const exactMatch = insumosDBRef.current.find(item => norm(item.sku) === norm(newItem.sku));
                                     if (exactMatch) {
                                         if (!newItem.gramaje) newItem.gramaje = exactMatch.gramaje;
                                         if (!newItem.ancho) newItem.ancho = exactMatch.ancho;
