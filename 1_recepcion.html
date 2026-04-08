@@ -669,9 +669,9 @@
                         for (let i = 0; i < rows.length; i++) {
                             doc.addPage('a4', 'portrait');
                             const rowData = rows[i];
-                            const opType = "INGRESO";
+                            const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
                             const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|TIPO:${rowData.tipo}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
-                            await drawBobinaLabelNative(doc, rowData, empresa, qrData);
+                            await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
                         }
 
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
@@ -701,6 +701,7 @@
                         setIsGeneratingPdf(false);
                     } catch (err) {
                         console.error(err);
+                        alert("Error al generar PDF: " + err.message);
                         setIsGeneratingPdf(false);
                     }
                 }, 100);
