@@ -163,7 +163,7 @@
             });
         };
 
-        const drawBobinaLabelNative = async (doc, row, empresa, qrData, isDevolucionFlag = false) => {
+        const drawBobinaLabelNative = async (doc, rowData, empresa, qrData, isDevolucionFlag = false) => {
             // A4 page is 210 x 297 mm
 
             // Outer Border
@@ -192,7 +192,7 @@
 
             // Big and bold
             doc.setFontSize(45);
-            const tipoLines = doc.splitTextToSize(row.tipo || 'S/D', 180);
+            const tipoLines = doc.splitTextToSize(rowData.tipo || 'S/D', 180);
             doc.text(tipoLines, 15, 58);
 
             // Adjustable anchor based on how many lines "Tipo" took
@@ -205,7 +205,7 @@
             const midY = anchorY + 40;
             const bottomY = anchorY + 80;
 
-            if (row.corte) {
+            if (rowData.corte) {
                 // Background for Corte
                 doc.setFillColor(30, 41, 59); // slate-800
                 doc.rect(10, anchorY, 95, 80, 'F');
@@ -215,7 +215,7 @@
                 doc.text("ANCHO HIJA", 57.5, anchorY + 15, { align: "center", charSpace: 1 });
 
                 doc.setFontSize(70);
-                doc.text(row.corte, 57.5, midY + 15, { align: "center" });
+                doc.text(rowData.corte, 57.5, midY + 15, { align: "center" });
                 doc.setFontSize(16);
                 doc.text("mm", 57.5, midY + 25, { align: "center" });
 
@@ -226,7 +226,7 @@
 
                 doc.setTextColor(29, 78, 216); // blue-700
                 doc.setFontSize(90);
-                doc.text(row.kg.toString() || '0', 152.5, midY + 18, { align: "center" });
+                doc.text(rowData.kg.toString() || '0', 152.5, midY + 18, { align: "center" });
                 doc.setFontSize(20);
                 doc.text("kg", 152.5, midY + 30, { align: "center" });
             } else {
@@ -237,7 +237,7 @@
 
                 doc.setTextColor(29, 78, 216); // blue-700
                 doc.setFontSize(120);
-                doc.text(row.kg.toString() || '0', 105, midY + 20, { align: "center" });
+                doc.text(rowData.kg.toString() || '0', 105, midY + 20, { align: "center" });
                 doc.setFontSize(26);
                 doc.text("kg", 180, midY + 15);
             }
@@ -254,7 +254,7 @@
             doc.text("PROVEEDOR", 15, bottomY + 10);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(26);
-            doc.text(doc.splitTextToSize(row.proveedor || 'S/D', 115), 15, bottomY + 20);
+            doc.text(doc.splitTextToSize(rowData.proveedor || 'S/D', 115), 15, bottomY + 20);
 
             // SKU
             doc.setFontSize(12);
@@ -262,7 +262,7 @@
             doc.text("SKU / ARTICULO", 15, bottomY + 38);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(30);
-            doc.text(doc.splitTextToSize(row.sku || 'S/D', 115), 15, bottomY + 48);
+            doc.text(doc.splitTextToSize(rowData.sku || 'S/D', 115), 15, bottomY + 48);
 
             // Gramaje and Ancho Orig
             doc.setFontSize(12);
@@ -270,14 +270,14 @@
             doc.text("GRAMAJE", 15, bottomY + 68);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(24);
-            doc.text((row.gramaje || '---') + " gr", 15, bottomY + 76);
+            doc.text((rowData.gramaje || '---') + " gr", 15, bottomY + 76);
 
             doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
             doc.text("ANCHO ORIG.", 70, bottomY + 68);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(24);
-            doc.text((row.ancho || '---') + " mm", 70, bottomY + 76);
+            doc.text((rowData.ancho || '---') + " mm", 70, bottomY + 76);
 
             // Lote Prod / Prov
             doc.setFontSize(12);
@@ -285,14 +285,14 @@
             doc.text("LOTE PROD.", 15, bottomY + 88);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(22);
-            doc.text(row.loteHija || 'N/A', 15, bottomY + 96);
+            doc.text(rowData.loteHija || 'N/A', 15, bottomY + 96);
 
             doc.setFontSize(12);
             doc.setTextColor(100, 100, 100);
             doc.text("LOTE PROV.", 70, bottomY + 88);
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(22);
-            doc.text(row.loteMadre || 'N/A', 70, bottomY + 96);
+            doc.text(rowData.loteMadre || 'N/A', 70, bottomY + 96);
 
             // Right Block: QR Code
             doc.setDrawColor(200, 200, 200);
@@ -301,7 +301,7 @@
 
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
-            doc.text("ID: " + row.uid, qrX + 25, bottomY + 70, { align: "center" });
+            doc.text("ID: " + rowData.uid, qrX + 25, bottomY + 70, { align: "center" });
         };
 
         const App = () => {
@@ -612,10 +612,10 @@
 
                         for (let i = 0; i < rows.length; i++) {
                             doc.addPage('a4', 'portrait');
-                            const row = rows[i];
+                            const rowData = rows[i];
                             const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                            const qrData = `UID:${row.uid}|OP:${opType}|PROV:${row.proveedor}|TIPO:${row.tipo}|FECHA:${formatDateDisplay(row.fecha)}|KG:${row.kg}|L.PROV:${row.loteMadre}|L.PROD:${row.loteHija}|A.HIJA:${row.corte}|SKU:${row.sku}`;
-                            await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
+                            const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|TIPO:${rowData.tipo}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
+                            await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
                         }
 
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
@@ -640,7 +640,6 @@
                         }
 
                         setRows([]);
-                        setTotalKg(0);
                         setEditingId(null);
                         setShowCloseModal(false);
                         setIsGeneratingPdf(false);
@@ -733,16 +732,19 @@
                 }
             }, [isDevolucion, editingId]);
 
-            const handlePreview = (row) => {
-                setPreviewRow(row); setPreviewPdfUrl(null);
+            const handlePreview = (rowData) => {
+                setPreviewRow(rowData); setPreviewPdfUrl(null);
                 setTimeout(async () => {
                     try {
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
                         const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                        const qrData = `UID:${row.uid}|OP:${opType}|PROV:${row.proveedor}|TIPO:${row.tipo}|FECHA:${formatDateDisplay(row.fecha)}|KG:${row.kg}|L.PROV:${row.loteMadre}|L.PROD:${row.loteHija}|A.HIJA:${row.corte}|SKU:${row.sku}`;
-                        await drawBobinaLabelNative(doc, row, empresa, qrData, isDevolucion);
+                        const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|TIPO:${rowData.tipo}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
+                        await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-                    } catch (err) { }
+                    } catch (err) {
+                        alert("Error generating preview: " + err.message);
+                        setPreviewPdfUrl(null);
+                    }
                 }, 100);
             };
             const exportarProyecto = () => {
