@@ -523,7 +523,7 @@
                         const kgsPallet = rows.reduce((acc, r) => acc + (parseFloat(String(r.kg || '0').replace(',', '.')) || 0), 0);
                         doc.text(`Total Kilos Brutos: ${kgsPallet} KG`, 14, 59);
 
-                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "NETO", "ACUM"];
+                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "NETO", "PESO ACUMULADO"];
                         
                         let acumArrayPdf = new Array(rows.length).fill(0);
                         let currentAcumReversedPdf = 0;
@@ -669,9 +669,9 @@
                         for (let i = 0; i < rows.length; i++) {
                             doc.addPage('a4', 'portrait');
                             const rowData = rows[i];
-                            const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
+                            const opType = "INGRESO";
                             const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|TIPO:${rowData.tipo}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
-                            await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
+                            await drawBobinaLabelNative(doc, rowData, empresa, qrData);
                         }
 
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
@@ -1051,7 +1051,7 @@
                                     {rows.length === 0 ? (<div className="p-12 text-center text-slate-500 font-bold">No hay bobinas ingresadas en esta sesión.</div>) : (
                                         <div className="overflow-x-auto"><table className="w-full text-left whitespace-nowrap min-w-max">
                                             <thead className="bg-white border-b border-slate-300"><tr>
-                                                <th className="px-4 py-2 text-[10px] font-black text-slate-500">#</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">SKU</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">TIPO</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">PROVEEDOR</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">LOTE PROVEEDOR</th><th className="px-4 py-2 text-[10px] font-black text-indigo-600 text-right">KILOS</th><th className="px-4 py-2 text-[10px] font-black text-emerald-600 text-right">ACUM.</th><th className="px-4 py-2 text-[10px] font-black text-slate-500 text-center">ACCIONES</th>
+                                                <th className="px-4 py-2 text-[10px] font-black text-slate-500">ACCIONES</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">SKU</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">TIPO</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">PROVEEDOR</th><th className="px-4 py-2 text-[10px] font-black text-slate-500">LOTE PROVEEDOR</th><th className="px-4 py-2 text-[10px] font-black text-indigo-600 text-right">KILOS</th><th className="px-4 py-2 text-[10px] font-black text-emerald-600 text-right">PESO ACUMULADO</th><th className="px-4 py-2 text-[10px] font-black text-slate-500 text-center">ELIMINAR / EDITAR</th>
                                             </tr></thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {(() => {
