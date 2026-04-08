@@ -207,9 +207,13 @@
 
             if (rowData.corte) {
                 // Background for Corte
-                doc.setFillColor(30, 41, 59); // slate-800
+                doc.setFillColor(235, 235, 235); // Gris claro para no gastar tanto toner
                 doc.rect(10, anchorY, 95, 80, 'F');
-                doc.setTextColor(255, 255, 255);
+                
+                // Linea separadora en el medio
+                doc.line(105, anchorY, 105, bottomY);
+                
+                doc.setTextColor(0, 0, 0); // Texto en negro para que contraste
 
                 doc.setFontSize(14);
                 doc.text("ANCHO HIJA", 57.5, anchorY + 15, { align: "center", charSpace: 1 });
@@ -224,7 +228,7 @@
                 doc.setFontSize(14);
                 doc.text("PESO NETO", 152.5, anchorY + 15, { align: "center", charSpace: 1 });
 
-                doc.setTextColor(29, 78, 216); // blue-700
+                doc.setTextColor(0, 0, 0); // Negro puro absoluto para Brother 1212W
                 doc.setFontSize(90);
                 doc.text(rowData.kg.toString() || '0', 152.5, midY + 18, { align: "center" });
                 doc.setFontSize(20);
@@ -235,7 +239,7 @@
                 doc.setTextColor(100, 100, 100);
                 doc.text("PESO NETO", 105, anchorY + 15, { align: "center", charSpace: 1 });
 
-                doc.setTextColor(29, 78, 216); // blue-700
+                doc.setTextColor(0, 0, 0); // Negro puro absoluto
                 doc.setFontSize(120);
                 doc.text(rowData.kg.toString() || '0', 105, midY + 20, { align: "center" });
                 doc.setFontSize(26);
