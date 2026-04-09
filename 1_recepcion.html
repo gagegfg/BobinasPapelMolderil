@@ -520,13 +520,13 @@
                 setIsGeneratingPdf(true);
                 setTimeout(async () => {
                     try {
-                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        const doc = new window.jspdf.jsPDF('l', 'mm', 'a4');
 
                         doc.setFont("helvetica", "bold");
                         doc.setFontSize(24);
-                        doc.text(isDevolucion ? "DEVOLUCIÓN A DEPÓSITO" : "RESUMEN DE BOBINAS", 105, 20, { align: "center" });
+                        doc.text(isDevolucion ? "DEVOLUCIÓN A DEPÓSITO" : "RESUMEN DE BOBINAS", 148.5, 20, { align: "center" });
                         doc.setFontSize(14);
-                        doc.text(empresa, 105, 30, { align: "center" });
+                        doc.text(empresa, 148.5, 30, { align: "center" });
 
                         doc.setFont("helvetica", "normal");
                         doc.setFontSize(10);
@@ -535,7 +535,7 @@
                         const kgsPallet = rows.reduce((acc, r) => acc + (parseFloat(String(r.kg || '0').replace(',', '.')) || 0), 0);
                         doc.text(`Total Kilos Brutos: ${kgsPallet} KG`, 14, 59);
 
-                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "NETO", "PESO ACUMULADO"];
+                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "ANCHO HIJA", "NETO", "PESO ACUMULADO"];
                         
                         let acumArrayPdf = new Array(rows.length).fill(0);
                         let currentAcumReversedPdf = 0;
@@ -556,7 +556,7 @@
                         rows.forEach((r, idx) => {
                             if (lastSkuPdf !== null && lastSkuPdf !== r.sku) {
                                 tableRows.push([
-                                    { content: '', colSpan: 8, styles: { fillColor: [226, 232, 240], minCellHeight: 3 } }
+                                    { content: '', colSpan: 9, styles: { fillColor: [226, 232, 240], minCellHeight: 3 } }
                                 ]);
                             }
                             lastSkuPdf = r.sku;
@@ -569,6 +569,7 @@
                                 r.proveedor || '',
                                 r.loteHija || '',
                                 r.loteMadre || '',
+                                r.corte ? r.corte + ' mm' : '',
                                 (r.kg || '0') + ' kg',
                                 showAcumPdf + ' kg'
                             ]);
