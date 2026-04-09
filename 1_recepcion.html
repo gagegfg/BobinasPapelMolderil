@@ -805,6 +805,11 @@
             const handleRelabelAddToGrid = () => {
                 const newRow = pendingRelabelRow;
                 setPendingRelabelRow(null);
+                // Verificar duplicado por UID
+                if (rows.some(r => r.uid === newRow.uid)) {
+                    alert(`⚠️ Esta bobina ya está en la lista:\n${newRow.sku} — UID: ${newRow.uid}`);
+                    return;
+                }
                 setRows(prev => [...prev, newRow]);
             };
 
