@@ -535,7 +535,7 @@
                         const kgsPallet = rows.reduce((acc, r) => acc + (parseFloat(String(r.kg || '0').replace(',', '.')) || 0), 0);
                         doc.text(`Total Kilos Brutos: ${kgsPallet} KG`, 14, 59);
 
-                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "ANCHO HIJA", "NETO", "PESO ACUMULADO"];
+                        const tableColumn = ["#", "FECHA", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "ANCHO HIJA", "NETO", "PESO ACUMULADO"];
                         
                         let acumArrayPdf = new Array(rows.length).fill(0);
                         let currentAcumReversedPdf = 0;
@@ -556,7 +556,7 @@
                         rows.forEach((r, idx) => {
                             if (lastSkuPdf !== null && lastSkuPdf !== r.sku) {
                                 tableRows.push([
-                                    { content: '', colSpan: 9, styles: { fillColor: [226, 232, 240], minCellHeight: 3 } }
+                                    { content: '', colSpan: 10, styles: { fillColor: [226, 232, 240], minCellHeight: 3 } }
                                 ]);
                             }
                             lastSkuPdf = r.sku;
@@ -564,6 +564,7 @@
                             
                             tableRows.push([
                                 (idx + 1).toString(),
+                                formatDateDisplay(r.fecha),
                                 r.sku || '',
                                 r.tipo || '',
                                 r.proveedor || '',
