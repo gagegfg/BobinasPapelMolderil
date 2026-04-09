@@ -738,10 +738,8 @@
                             let isValid = false;
                             let parts = [];
 
-                            if (decodedText.includes("MOLDERIL SA")) {
-                                isValid = true;
-                                parts = decodedText.split(" | ");
-                            } else if (decodedText.includes("UID:") && decodedText.includes("SKU:")) {
+                            // Solo formato actual: UID:xxx|OP:xxx|...|SKU:xxx
+                            if (decodedText.includes("UID:") && decodedText.includes("SKU:")) {
                                 isValid = true;
                                 parts = decodedText.split("|");
                             }
@@ -749,7 +747,6 @@
                             if (isValid) {
                                 let newRow = { id: generateId(), uid: generateUID(), fecha: today, proveedor: '', tipo: '', gramaje: '', ancho: '', sku: '', corte: '', kg: '', loteMadre: '', loteHija: '', obs: 'Re-etiquetado' };
                                 parts.forEach(p => {
-                                    if (p === "MOLDERIL SA") return;
                                     const idx = p.indexOf(":");
                                     if (idx === -1) return;
                                     const val = p.substring(idx + 1).trim();
@@ -762,8 +759,6 @@
                                     else if (p.startsWith("L.PROD:")) newRow.loteHija = val;
                                     else if (p.startsWith("A.HIJA:")) newRow.corte = val;
                                     else if (p.startsWith("SKU:")) newRow.sku = val;
-                                    else if (p.startsWith("GRAMAJE:")) newRow.gramaje = val;
-                                    else if (p.startsWith("ANCHO:")) newRow.ancho = val;
                                     else if (p.startsWith("FECHA:")) newRow.fecha = val;
                                 });
                                 
