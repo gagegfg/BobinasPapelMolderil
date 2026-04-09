@@ -720,14 +720,18 @@
 
             const closeRelabelScanner = () => {
                 if (scannerRefRelabel.current) {
-                    scannerRefRelabel.current.clear().then(() => { scannerRefRelabel.current = null; setIsRelabelScanning(false); }).catch(() => { scannerRefRelabel.current = null; setIsRelabelScanning(false); });
+                    scannerRefRelabel.current.stop().then(() => { scannerRefRelabel.current.clear(); scannerRefRelabel.current = null; setIsRelabelScanning(false); })
+                    .catch(() => { try { scannerRefRelabel.current.clear(); } catch(e){} scannerRefRelabel.current = null; setIsRelabelScanning(false); });
                 } else setIsRelabelScanning(false);
             };
 
             useEffect(() => {
                 if (isRelabelScanning) {
-                    scannerRefRelabel.current = new Html5QrcodeScanner("reader-relabel", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-                    scannerRefRelabel.current.render(
+                    const scanner = new Html5Qrcode("reader-relabel");
+                    scannerRefRelabel.current = scanner;
+                    scanner.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
                         (decodedText) => {
                             if (Date.now() - lastRelabelScannedTime.current < 2000) return;
                             lastRelabelScannedTime.current = Date.now();
@@ -774,8 +778,13 @@
                                 setPendingRelabelRow(newRow);
                             }
                         }, () => { }
-                    );
+                    ).catch(err => console.warn("Error iniciando cámara:", err));
                 }
+                return () => {
+                    if (scannerRefRelabel.current) {
+                        scannerRefRelabel.current.stop().catch(() => {});
+                    }
+                };
             }, [isRelabelScanning]);
 
             const handleRelabelPreview = () => {

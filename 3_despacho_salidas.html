@@ -198,15 +198,18 @@
 
             const closeOutputScanner = () => {
                 if (scannerRef.current) {
-                    scannerRef.current.clear().then(() => { scannerRef.current = null; setIsOutputScanning(false); })
-                    .catch(() => { scannerRef.current = null; setIsOutputScanning(false); });
+                    scannerRef.current.stop().then(() => { scannerRef.current.clear(); scannerRef.current = null; setIsOutputScanning(false); })
+                    .catch(() => { try { scannerRef.current.clear(); } catch(e){} scannerRef.current = null; setIsOutputScanning(false); });
                 } else { setIsOutputScanning(false); }
             };
 
             useEffect(() => {
                 if (isOutputScanning) {
-                    scannerRef.current = new Html5QrcodeScanner("reader-salidas", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-                    scannerRef.current.render(
+                    const scanner = new Html5Qrcode("reader-salidas");
+                    scannerRef.current = scanner;
+                    scanner.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
                         (decodedText) => {
                             if (Date.now() - lastScannedTime.current < 2000) return;
                             lastScannedTime.current = Date.now();
@@ -257,11 +260,11 @@
                                 });
                             }
                         }, () => {}
-                    );
+                    ).catch(err => console.warn("Error iniciando cámara:", err));
                 }
                 return () => {
                     if (scannerRef.current) {
-                        scannerRef.current.clear().catch(console.error);
+                        scannerRef.current.stop().catch(() => {});
                     }
                 };
             }, [isOutputScanning]);
@@ -273,56 +276,131 @@
             const generarReporteSalida = (actionType) => {
                 if (scannedItems.length === 0) return alert("No hay bobinas escaneadas.");
                 setIsGeneratingPdf(true);
-                const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                const totalKg = scannedItems.reduce((acc, obj) => acc + (parseFloat(String(obj.kg).replace(',', '.')) || 0), 0);
 
-                doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text("MOLDERIL S.A.", 14, 20);
-                doc.setFontSize(14); doc.setFont("helvetica", "normal"); doc.text("REPORTE DE SALIDAS (DESPACHO)", 14, 28);
-                doc.setFontSize(10);
-                doc.text(`Fecha Emisión: ${formatDateDisplay(today)}`, 14, 38);
-                doc.text(`Cantidad Bobinas: ${scannedItems.length}`, 14, 44);
-                
-                doc.setFontSize(12); doc.setFont("helvetica", "bold");
-                doc.setTextColor(124, 58, 237); // Violet-600
-                doc.text(`TOTAL DESPACHADO: ${totalKg.toLocaleString('es-AR')} kg`, 100, 44);
-                doc.setTextColor(0, 0, 0);
-
-                doc.autoTable({
-                    startY: 55,
-                    head: [['ID Bobina (UID)', 'SKU', 'Tipo / Ancho', 'L. Mad', 'L. Hija', 'Kg Netos']],
-                    body: scannedItems.map(r => [
-                        r.uid, 
-                        r.sku, 
-                        `${r.tipo} (${r.ancho}mm)`, 
-                        r.loteMadre || '-', 
-                        r.loteHija || '-', 
-                        `${r.kg}`
-                    ]),
-                    theme: 'grid',
-                    headStyles: { fillColor: [109, 40, 217] }, // Violet-700
-                    styles: { fontSize: 9 }
-                });
-
-                
                 setTimeout(async () => {
                     try {
-                        for (let i = 0; i < scannedItems.length; i++) {
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        const totalKg = scannedItems.reduce((acc, obj) => acc + (parseFloat(String(obj.kg).replace(',', '.')) || 0), 0);
+
+                        // HEADER
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(24);
+                        doc.text("REMITO DE SALIDA DE DEPÓSITO", 105, 20, { align: "center" });
+                        doc.setFontSize(14);
+                        doc.text("MOLDERIL S.A.", 105, 30, { align: "center" });
+
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(10);
+                        doc.text(`Fecha de Emisión: ${formatDateDisplay(today)}`, 14, 45);
+                        doc.text(`Total Bobinas: ${scannedItems.length}`, 14, 52);
+
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(12);
+                        doc.setTextColor(109, 40, 217);
+                        doc.text(`TOTAL DESPACHADO: ${totalKg.toLocaleString('es-AR')} kg`, 14, 59);
+                        doc.setTextColor(0, 0, 0);
+
+                        // Agrupar por SKU y ordenar
+                        const sorted = [...scannedItems].sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
+
+                        // Construir tabla con separadores y subtotales por tipo
+                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "NETO"];
+                        const tableRows = [];
+                        let lastSku = null;
+                        let skuCount = 0;
+                        let skuKg = 0;
+                        let globalIdx = 0;
+
+                        const flushSubtotal = () => {
+                            if (lastSku !== null && skuCount > 0) {
+                                const subKgText = skuKg % 1 === 0 ? skuKg.toString() : skuKg.toFixed(2);
+                                tableRows.push([
+                                    { content: `Subtotal ${lastSku}: ${skuCount} bobinas`, colSpan: 6, styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229] } },
+                                    { content: subKgText + ' kg', styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229], halign: 'right' } }
+                                ]);
+                            }
+                        };
+
+                        sorted.forEach((r) => {
+                            if (lastSku !== null && lastSku !== r.sku) {
+                                flushSubtotal();
+                                // Separador visual
+                                tableRows.push([
+                                    { content: '', colSpan: 7, styles: { fillColor: [226, 232, 240], minCellHeight: 3 } }
+                                ]);
+                                skuCount = 0;
+                                skuKg = 0;
+                            }
+                            lastSku = r.sku;
+                            globalIdx++;
+                            const rkg = parseFloat(String(r.kg || '0').replace(',', '.')) || 0;
+                            skuCount++;
+                            skuKg += rkg;
+
+                            tableRows.push([
+                                globalIdx.toString(),
+                                r.sku || '',
+                                r.tipo || '',
+                                r.proveedor || '',
+                                r.loteHija || '',
+                                r.loteMadre || '',
+                                (r.kg || '0') + ' kg'
+                            ]);
+                        });
+                        flushSubtotal();
+
+                        doc.autoTable({
+                            startY: 65,
+                            head: [tableColumn],
+                            body: tableRows,
+                            theme: 'grid',
+                            headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
+                            styles: { fontSize: 8, cellPadding: 2 },
+                            columnStyles: { 6: { halign: 'right' } }
+                        });
+
+                        // Firmas
+                        const sigY = doc.lastAutoTable.finalY + 30;
+                        // Si las firmas no caben, nueva página
+                        const pageH = doc.internal.pageSize.getHeight();
+                        let finalSigY = sigY;
+                        if (sigY + 40 > pageH - 15) {
                             doc.addPage('a4', 'portrait');
-                            const r = scannedItems[i];
-                            const qrData = `UID:${r.uid}|OP:DESPACHO|PROV:${r.proveedor}|FECHA:${r.fecha||''}|KG:${r.kg}|L.PROV:${r.loteMadre}|L.PROD:${r.loteHija}|A.HIJA:${r.corte||''}|SKU:${r.sku}`;
-                            await drawBobinaLabelNative(doc, r, "MOLDERIL S.A.", qrData);
+                            finalSigY = 40;
                         }
+
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(10);
+                        doc.setTextColor(0, 0, 0);
+                        doc.setDrawColor(0, 0, 0);
+
+                        // Firma izquierda: Prepara y Entrega
+                        doc.line(20, finalSigY + 20, 90, finalSigY + 20);
+                        doc.setFont("helvetica", "bold");
+                        doc.text("PREPARA Y ENTREGA", 55, finalSigY + 27, { align: "center" });
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        doc.text("Firma / Aclaración", 55, finalSigY + 32, { align: "center" });
+
+                        // Firma derecha: Recibe en Producción
+                        doc.setFontSize(10);
+                        doc.line(120, finalSigY + 20, 190, finalSigY + 20);
+                        doc.setFont("helvetica", "bold");
+                        doc.text("RECIBE EN PRODUCCIÓN", 155, finalSigY + 27, { align: "center" });
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        doc.text("Firma / Aclaración", 155, finalSigY + 32, { align: "center" });
+
                         const fileName = `Despacho_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
-                        // Siempre descargamos una copia local como respaldo
                         doc.save(fileName);
-                        
+
                         if (actionType === 'share') {
                             if (navigator.canShare) {
                                 try {
                                     const blob = doc.output('blob');
                                     const file = new File([blob], fileName, { type: 'application/pdf' });
                                     await navigator.share({
-                                        title: 'Reporte Despacho a Producción',
+                                        title: 'Remito Despacho a Producción',
                                         files: [file]
                                     });
                                 } catch (e) { console.log("Compartir cancelado o fallo", e); }
@@ -330,12 +408,13 @@
                                 alert("Tu navegador en PC no soporta abrir la ventana de compartir nativa. El documento se descargó exitosamente.");
                             }
                         }
-                        
+
                         setScannedItems([]);
                         setShowCloseModal(false);
                         setIsGeneratingPdf(false);
                     } catch (err) {
                         console.error(err);
+                        alert("Error al generar PDF: " + err.message);
                         setIsGeneratingPdf(false);
                     }
                 }, 100);
