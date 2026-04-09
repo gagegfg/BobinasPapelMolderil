@@ -181,6 +181,14 @@
             doc.setTextColor(100, 100, 100);
             const tituloLabel = isDevolucionFlag ? "D E V O L U C I O N   D E   P R O D U C C I O N" : "I D E N T I F I C A C I O N   D E   B O B I N A";
             doc.text(tituloLabel, 105, 31, { align: "center" });
+
+            // Fecha en el encabezado (esquina superior derecha)
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.setTextColor(60, 60, 60);
+            const fechaLabel = rowData.fecha ? (rowData.fecha.includes('/') ? rowData.fecha : formatDateDisplay(rowData.fecha)) : '--/--/----';
+            doc.text("FECHA: " + fechaLabel, 195, 31, { align: "right" });
+
             doc.setTextColor(0, 0, 0);
 
             doc.setLineWidth(0.5);
@@ -303,11 +311,12 @@
             // Right Block: QR Code
             doc.setDrawColor(200, 200, 200);
             const qrImg = await getQRCodeDataURL(qrData);
-            doc.addImage(qrImg, 'PNG', qrX, bottomY + 15, 50, 50);
+            doc.addImage(qrImg, 'PNG', qrX, bottomY + 10, 55, 55);
 
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
-            doc.text("ID: " + rowData.uid, qrX + 25, bottomY + 70, { align: "center" });
+            doc.text(fechaLabel, qrX + 27.5, bottomY + 70, { align: "center" });
+            doc.text("ID: " + rowData.uid, qrX + 27.5, bottomY + 75, { align: "center" });
         };
 
         const App = () => {
