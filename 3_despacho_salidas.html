@@ -70,15 +70,13 @@
             doc.setFont("helvetica", "bold"); doc.setFontSize(40); doc.text(empresa, 105, 23, { align: "center" });
             doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text("IDENTIFICACION DE BOBINA", 105, 31, { align: "center", charSpace: 2 });
 
-            // Fecha en encabezado
-            doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(60, 60, 60);
+            // Calcular fecha para debajo del QR
             const fechaLabel = (() => {
                 if (!row.fecha) return '--/--/----';
                 if (row.fecha.includes('/')) return row.fecha;
                 const [y, m, d] = row.fecha.split('-');
                 return `${d}/${m}/${y}`;
             })();
-            doc.text("FECHA: " + fechaLabel, 195, 31, { align: "right" });
 
             doc.setTextColor(0, 0, 0); doc.setLineWidth(0.5); doc.line(10, 36, 200, 36);
             doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text("TIPO DE PAPEL", 15, 45);

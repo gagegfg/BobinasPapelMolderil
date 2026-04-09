@@ -182,17 +182,13 @@
             const tituloLabel = isDevolucionFlag ? "D E V O L U C I O N   D E   P R O D U C C I O N" : "I D E N T I F I C A C I O N   D E   B O B I N A";
             doc.text(tituloLabel, 105, 31, { align: "center" });
 
-            // Fecha en el encabezado (esquina superior derecha)
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.setTextColor(60, 60, 60);
+            // Calcular fecha formateada para usar debajo del QR
             const fechaLabel = (() => {
                 if (!rowData.fecha) return '--/--/----';
                 if (rowData.fecha.includes('/')) return rowData.fecha;
                 const [y, m, d] = rowData.fecha.split('-');
                 return `${d}/${m}/${y}`;
             })();
-            doc.text("FECHA: " + fechaLabel, 195, 31, { align: "right" });
 
             doc.setTextColor(0, 0, 0);
 
