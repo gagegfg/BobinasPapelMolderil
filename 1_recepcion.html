@@ -186,7 +186,12 @@
             doc.setFont("helvetica", "bold");
             doc.setFontSize(12);
             doc.setTextColor(60, 60, 60);
-            const fechaLabel = rowData.fecha ? (rowData.fecha.includes('/') ? rowData.fecha : formatDateDisplay(rowData.fecha)) : '--/--/----';
+            const fechaLabel = (() => {
+                if (!rowData.fecha) return '--/--/----';
+                if (rowData.fecha.includes('/')) return rowData.fecha;
+                const [y, m, d] = rowData.fecha.split('-');
+                return `${d}/${m}/${y}`;
+            })();
             doc.text("FECHA: " + fechaLabel, 195, 31, { align: "right" });
 
             doc.setTextColor(0, 0, 0);
