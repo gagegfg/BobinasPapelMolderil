@@ -344,6 +344,7 @@
             const [isRelabelScanning, setIsRelabelScanning] = useState(false);
             const [previewRow, setPreviewRow] = useState(null);
             const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
+            const [pendingRelabelRow, setPendingRelabelRow] = useState(null);
             const [insumosDB, setInsumosDB] = useState([]);
             const insumosDBRef = useRef([]);
             const scannerRefRelabel = useRef(null);
@@ -765,21 +766,33 @@
                                 }
 
                                 playSuccessSound(); closeRelabelScanner();
-                                setPreviewRow(newRow); setPreviewPdfUrl(null);
-                                setTimeout(async () => {
-                                    try {
-                                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                                        const qrData = decodedText;
-                                        let isDev = decodedText.includes("OP: DEVOLUCION");
-                                        await drawBobinaLabelNative(doc, newRow, empresa, qrData, isDev);
-                                        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
-                                    } catch (err) { }
-                                }, 100);
+                                setPendingRelabelRow(newRow);
                             }
                         }, () => { }
                     );
                 }
             }, [isRelabelScanning]);
+
+            const handleRelabelPreview = () => {
+                const newRow = pendingRelabelRow;
+                setPendingRelabelRow(null);
+                setPreviewRow(newRow); setPreviewPdfUrl(null);
+                setTimeout(async () => {
+                    try {
+                        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
+                        const qrData = `UID:${newRow.uid}|OP:${opType}|PROV:${newRow.proveedor}|FECHA:${formatDateDisplay(newRow.fecha)}|KG:${newRow.kg}|L.PROV:${newRow.loteMadre}|L.PROD:${newRow.loteHija}|A.HIJA:${newRow.corte}|SKU:${newRow.sku}`;
+                        await drawBobinaLabelNative(doc, newRow, empresa, qrData, isDevolucion);
+                        setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
+                    } catch (err) { }
+                }, 100);
+            };
+
+            const handleRelabelAddToGrid = () => {
+                const newRow = pendingRelabelRow;
+                setPendingRelabelRow(null);
+                setRows(prev => [...prev, newRow]);
+            };
 
 
 
@@ -849,18 +862,52 @@
                                     </div>
 
                                     <div className="space-y-3">
-                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">2</span> Función de Escáner y Re-etiquetado</h4>
-                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use el botón <strong className="text-emerald-700">Re-Etiquetar</strong> para abrir la cámara. Si escanea un rótulo dañado de la fábrica, el sistema completará mágicamente todo el formulario con esos datos exactos, listo para re-imprimir un rótulo nuevo idéntico.</p>
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">2</span> Re-Etiquetar (Escáner QR)</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use el botón <strong className="text-emerald-700">Re-Etiquetar</strong> para abrir la cámara y escanear un rótulo existente. Al detectar el código, el sistema le preguntará qué desea hacer:</p>
+                                        <ul className="text-slate-600 text-sm leading-relaxed px-14 list-disc space-y-1">
+                                            <li><strong className="text-indigo-600">Vista Previa Rótulo:</strong> Genera el rótulo en pantalla para verificar y luego reimprimir la etiqueta dañada.</li>
+                                            <li><strong className="text-emerald-600">Agregar a la Lista:</strong> Incorpora la bobina escaneada directamente a la grilla de carga, ideal para reconstruir una recepción escaneando etiquetas existentes.</li>
+                                            <li><strong>Descartar:</strong> Cierra sin hacer nada.</li>
+                                        </ul>
+                                        <p className="text-slate-500 text-xs leading-relaxed px-10 italic">Si el QR no contiene la descripción del papel (etiquetas nuevas), el sistema la recupera automáticamente desde la Base de Datos usando el SKU.</p>
                                     </div>
 
                                     <div className="space-y-3">
-                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">3</span> Carga por Buscador (Autocompletado)</h4>
-                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Para carga manual, escriba parte del SKU o Tipo de Papel. Se desplegará una lista de sugerencias basada en la Base de Datos. Al hacer clic, completará Tipo, SKU, Proveedor, Gramaje y Ancho en un segundo.</p>
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">3</span> Carga Manual (Autocompletado)</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Para carga manual, escriba parte del SKU o Tipo de Papel. Se desplegará una lista de sugerencias basada en la Base de Datos. Al hacer clic, completará Tipo, SKU, Proveedor, Gramaje y Ancho en un segundo. Solo se permiten artículos que existan en la base de datos.</p>
                                     </div>
 
                                     <div className="space-y-3">
-                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-amber-100 text-amber-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">4</span> Cierre del Pallet o Recepción</h4>
-                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Una vez registradas todas las bobinas en la ventana inferior, toque el botón violeta <strong className="bg-indigo-600 text-white px-2 py-0.5 rounded">PROCESAR Pdfs</strong>. Esto le pedirá confirmar si desea <strong>Descargar</strong> el archivo PDF en el equipo actual o <strong>Compartirlo</strong> enviándolo directamente al teléfono o WhatsApp vinculado. Al finalizar se vaciará la lista.</p>
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-violet-100 text-violet-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">4</span> Orden de la Pila (Flechas ↑↓)</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">En la primera columna de la grilla encontrará <strong>flechas arriba y abajo</strong> junto al número de cada bobina. Úselas para reordenar las filas y reflejar el orden físico real de la pila en el depósito. La <strong>fila 1</strong> representa la base (piso) y la <strong>última fila</strong> la cima de la pila.</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-emerald-100 text-emerald-600 w-8 h-8 rounded-lg flex justify-center items-center font-black">5</span> Peso Acumulado y Separadores</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">La columna <strong className="text-emerald-600">PESO ACUMULADO</strong> calcula automáticamente el peso total restante desde la cima de la pila hacia abajo, acumulando por bloque de artículo (SKU). Si retira la bobina superior, simplemente táchela en la hoja impresa: la siguiente fila ya muestra el saldo correcto sin necesidad de recalcular.</p>
+                                        <p className="text-slate-500 text-xs leading-relaxed px-10 italic">Cuando cambia el tipo de papel (SKU) en la pila, se inserta una línea separadora gris y el acumulado reinicia desde cero para ese nuevo bloque.</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-slate-200 text-slate-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">6</span> Guardar y Restaurar Sesión</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Use los botones de la barra superior:</p>
+                                        <ul className="text-slate-600 text-sm leading-relaxed px-14 list-disc space-y-1">
+                                            <li><strong>Guardar:</strong> Exporta la lista actual a un archivo <code className="bg-slate-100 px-1 rounded">.json</code> como respaldo local.</li>
+                                            <li><strong>Sesión:</strong> Importa un archivo <code className="bg-slate-100 px-1 rounded">.json</code> guardado previamente para retomar una carga interrumpida.</li>
+                                            <li><strong className="text-red-600">Borrar todo:</strong> Elimina todas las bobinas de la grilla y la memoria caché del navegador.</li>
+                                        </ul>
+                                        <p className="text-slate-500 text-xs leading-relaxed px-10 italic">La grilla se guarda automáticamente en el navegador. Si cierra la pestaña y vuelve a abrir, los datos persisten.</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2"><span className="bg-amber-100 text-amber-700 w-8 h-8 rounded-lg flex justify-center items-center font-black">7</span> Cierre y Generación de PDF</h4>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10">Una vez registradas todas las bobinas, toque el botón violeta <strong className="bg-indigo-600 text-white px-2 py-0.5 rounded">PROCESAR PDFs</strong>. El sistema generará un documento que incluye:</p>
+                                        <ul className="text-slate-600 text-sm leading-relaxed px-14 list-disc space-y-1">
+                                            <li><strong>Página 1:</strong> Tabla detallada con todas las bobinas, sus pesos y el peso acumulado.</li>
+                                            <li><strong>Página 2:</strong> Resumen agrupado por artículo con cantidad de bobinas y peso total.</li>
+                                            <li><strong>Páginas siguientes:</strong> Un rótulo individual A4 por cada bobina con código QR.</li>
+                                        </ul>
+                                        <p className="text-slate-600 text-sm leading-relaxed px-10 mt-2">Elija <strong>Descargar</strong> para guardar el PDF en el equipo o <strong>Compartir</strong> para enviarlo directamente al teléfono o WhatsApp. Al finalizar se vaciará la lista.</p>
                                     </div>
 
                                 </div>
@@ -896,6 +943,29 @@
                                         </div>
                                     </>
                                 )}
+                            </div>
+                        </div>
+                    )}
+                    {pendingRelabelRow && (
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
+                            <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Icon name="check" size={32} />
+                                </div>
+                                <h3 className="font-black text-xl text-slate-900 mb-2">QR Escaneado</h3>
+                                <p className="text-sm text-slate-500 mb-1 font-bold">{pendingRelabelRow.sku}</p>
+                                <p className="text-xs text-slate-400 mb-6">{pendingRelabelRow.tipo} — {pendingRelabelRow.kg} kg</p>
+                                <div className="space-y-3">
+                                    <button onClick={handleRelabelPreview} className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-4 rounded-xl font-bold text-base transition-colors">
+                                        <Icon name="tag" size={20} /> Vista Previa Rótulo
+                                    </button>
+                                    <button onClick={handleRelabelAddToGrid} className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-4 rounded-xl font-bold text-base transition-colors">
+                                        <Icon name="plus" size={20} /> Agregar a la Lista
+                                    </button>
+                                    <button onClick={() => setPendingRelabelRow(null)} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-3 rounded-xl font-bold transition-colors mt-1">
+                                        Descartar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
