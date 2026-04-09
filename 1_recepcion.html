@@ -670,7 +670,7 @@
                             doc.addPage('a4', 'portrait');
                             const rowData = rows[i];
                             const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                            const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|TIPO:${rowData.tipo}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
+                            const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
                             await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
                         }
 
@@ -757,8 +757,10 @@
                                 if (newRow.sku && insumosDBRef.current.length > 0) {
                                     const exactMatch = insumosDBRef.current.find(item => norm(item.sku) === norm(newRow.sku));
                                     if (exactMatch) {
+                                        if (!newRow.tipo) newRow.tipo = exactMatch.tipo;
                                         if (!newRow.gramaje) newRow.gramaje = exactMatch.gramaje;
                                         if (!newRow.ancho) newRow.ancho = exactMatch.ancho;
+                                        if (!newRow.proveedor) newRow.proveedor = exactMatch.proveedor;
                                     }
                                 }
 
@@ -795,7 +797,7 @@
                     try {
                         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
                         const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                        const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|TIPO:${rowData.tipo}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
+                        const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
                         await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
                         setPreviewPdfUrl(URL.createObjectURL(doc.output('blob')));
                     } catch (err) {
