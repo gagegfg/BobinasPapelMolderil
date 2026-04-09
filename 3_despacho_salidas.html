@@ -17,12 +17,63 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        #reader-salidas button { background-color: #7c3aed; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 800; margin: 5px; cursor: pointer; border: none; width: 100%; max-width: 300px; text-transform: uppercase; letter-spacing: 1px; }
-        #reader-salidas select { padding: 12px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 10px; width: 100%; max-width: 300px; }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; margin: 0; }
         #reader-salidas { border: none !important; }
         #reader-salidas img { display: none !important; }
-        #reader-salidas__scan_region { border: 4px dashed #6b7280; border-radius: 12px; overflow: hidden; }
+        /* Layout responsivo */
+        .app-main {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+        .panel-camera {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            position: relative;
+            background: #0f172a;
+        }
+        .panel-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f8fafc;
+            padding: 1rem;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .panel-list-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        /* Landscape mobile / tablet / desktop: side by side */
+        @media (min-width: 768px), (orientation: landscape) {
+            .app-main {
+                flex-direction: row;
+            }
+            .panel-camera {
+                width: 45%;
+                max-width: 500px;
+                padding: 2rem;
+            }
+            .panel-list {
+                padding: 1.5rem;
+            }
+        }
+        /* Portrait mobile: stacked, camera compact */
+        @media (max-width: 767px) and (orientation: portrait) {
+            .panel-camera {
+                max-height: 45vh;
+            }
+            .panel-list {
+                min-height: 55vh;
+            }
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -527,24 +578,24 @@
                         </div>
                     </nav>
 
-                    <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden bg-slate-900">
+                    <main className="app-main">
                         
                         {/* PANEL CÁMARA */}
-                        <div className="w-full md:w-1/2 p-4 md:p-12 flex flex-col items-center justify-center relative shadow-2xl z-10 shrink-0">
+                        <div className="panel-camera">
                             <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' }}></div>
                             
-                            <h2 className="text-white font-black text-3xl mb-3 flex items-center gap-3 relative z-10"><Icon name="camera" size={32} /> Escáner Activo</h2>
-                            <p className="text-violet-200 text-sm mb-8 text-center max-w-sm relative z-10">Apunta al código QR generado por la aplicación de Recepción Logística para registrar la entrega a la planta.</p>
+                            <h2 className="text-white font-black text-xl md:text-3xl mb-2 flex items-center gap-3 relative z-10"><Icon name="camera" size={24} /> Escáner</h2>
+                            <p className="text-violet-200 text-xs md:text-sm mb-4 text-center max-w-sm relative z-10">Apunta al código QR del rótulo para registrar la salida.</p>
 
-                            <div className="bg-white p-3 rounded-2xl w-full max-w-md shadow-2xl relative z-10 min-h-[300px] flex items-center justify-center border-4 border-violet-500/30">
+                            <div className="bg-white p-2 md:p-3 rounded-2xl w-full max-w-md shadow-2xl relative z-10 flex items-center justify-center border-4 border-violet-500/30" style={{ minHeight: '200px' }}>
                                 {!isOutputScanning ? (
-                                    <button onClick={() => setIsOutputScanning(true)} className="bg-violet-600 text-white px-8 py-4 rounded-xl font-black text-lg w-full h-full flex items-center justify-center gap-3 hover:bg-violet-700 transition-all active:scale-95 shadow-lg shadow-violet-500/50">
+                                    <button onClick={() => setIsOutputScanning(true)} className="bg-violet-600 text-white px-6 py-3 md:px-8 md:py-4 rounded-xl font-black text-base md:text-lg w-full flex items-center justify-center gap-3 hover:bg-violet-700 transition-all active:scale-95 shadow-lg shadow-violet-500/50">
                                         <Icon name="camera" size={24} /> INICIAR LECTURA
                                     </button>
                                 ) : (
-                                    <div className="w-full h-full flex flex-col relative">
+                                    <div className="w-full flex flex-col relative">
                                         <div id="reader-salidas" className="w-full bg-slate-100 rounded-xl overflow-hidden shadow-inner"></div>
-                                        <button onClick={closeOutputScanner} className="absolute -bottom-16 left-0 right-0 mx-auto w-3/4 bg-red-600/90 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 shadow-xl border border-red-500/50 flex items-center justify-center gap-2">
+                                        <button onClick={closeOutputScanner} className="mt-3 w-full bg-red-600/90 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 shadow-xl border border-red-500/50 flex items-center justify-center gap-2">
                                             <Icon name="close" /> PAUSAR CÁMARA
                                         </button>
                                     </div>
@@ -553,8 +604,8 @@
                         </div>
 
                         {/* PANEL LISTA */}
-                        <div className="w-full md:w-1/2 bg-slate-50 flex flex-col p-4 md:p-6 shadow-[-10px_0_20px_rgba(0,0,0,0.1)] z-20 min-h-[50vh] md:h-full">
-                            <div className="flex justify-between items-end border-b-2 border-slate-200 pb-5 mb-5 shrink-0">
+                        <div className="panel-list">
+                            <div className="flex justify-between items-end border-b-2 border-slate-200 pb-3 mb-3 shrink-0">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Registro de Salidas</h3>
                                     <p className="text-xs font-bold text-slate-500 uppercase mt-1">Bobinas descontadas: {scannedItems.length}</p>
@@ -567,7 +618,7 @@
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-300">
+                            <div className="panel-list-scroll space-y-2 pr-1">
                                 {scannedItems.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-80">
                                         <Icon name="box" size={64} />
