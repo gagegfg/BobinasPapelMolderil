@@ -412,12 +412,12 @@
                             if (lastSku !== null && skuCount > 0) {
                                 const subKgText = skuKg % 1 === 0 ? skuKg.toString() : skuKg.toFixed(2);
                                 tableRows.push([
-                                    { content: `   Total Despachado: ${skuCount} bobina(s)`, colSpan: 5, styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229] } },
-                                    { content: subKgText + ' kg', styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229], halign: 'right' } }
+                                    { content: `Total Despachado: ${skuCount} bobina(s)`, colSpan: 5, styles: { fillColor: [245, 245, 245], fontStyle: 'bolditalic', fontSize: 8, textColor: [0, 0, 0], halign: 'right' } },
+                                    { content: subKgText + ' kg', styles: { fillColor: [245, 245, 245], fontStyle: 'bolditalic', fontSize: 8, textColor: [0, 0, 0], halign: 'right' } }
                                 ]);
                                 // Separador visual entre áreas gruesas de productos
                                 tableRows.push([
-                                    { content: '', colSpan: 6, styles: { fillColor: [255, 255, 255], minCellHeight: 4, lineWidth: 0 } }
+                                    { content: '', colSpan: 6, styles: { fillColor: [255, 255, 255], minCellHeight: 6, lineWidth: 0 } }
                                 ]);
                             }
                         };
@@ -434,9 +434,9 @@
                                 // Título Agrupador de SKU y Tipo
                                 tableRows.push([
                                     { 
-                                        content: `■ ${r.sku || 'SIN CÓDIGO'} — ${r.tipo || 'SIN DESCRIPCIÓN'}`, 
+                                        content: `ART: ${r.sku || 'S/C'} - ${r.tipo || 'S/D'}`, 
                                         colSpan: 6, 
-                                        styles: { fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 10, textColor: [15, 23, 42], halign: 'left', cellPadding: 3 } 
+                                        styles: { fillColor: [225, 225, 225], fontStyle: 'bold', fontSize: 9, textColor: [0, 0, 0], halign: 'left', cellPadding: 3 } 
                                     }
                                 ]);
                             }
@@ -463,7 +463,7 @@
                             body: tableRows,
                             theme: 'grid',
                             headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
-                            styles: { fontSize: 8, cellPadding: 2, lineColor: [226, 232, 240] },
+                            styles: { fontSize: 8, cellPadding: 2, lineColor: [180, 180, 180] },
                             columnStyles: { 5: { halign: 'right' }, 0: { halign: 'center', cellWidth: 10 } }
                         });
 
