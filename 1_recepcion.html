@@ -340,6 +340,7 @@
             const [showCloseModal, setShowCloseModal] = useState(false);
             const [isAutoLoadingDB, setIsAutoLoadingDB] = useState(true);
             const [showHelp, setShowHelp] = useState(false);
+            const [printMode, setPrintMode] = useState('pila'); // 'pila' | 'individual'
 
             const playSuccessSound = () => {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -691,12 +692,136 @@
                         }
                         // END NEW SUMMARY PAGE
 
-                        for (let i = 0; i < rows.length; i++) {
-                            doc.addPage('a4', 'portrait');
-                            const rowData = rows[i];
-                            const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
-                            const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
-                            await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
+                        if (printMode === 'pila') {
+                            // NUEVA PAGINA: RESUMEN PARA ESCANEO
+                            const qrCols = 2;
+                        const qrRowsPerPage = 4;
+                        const qrSize = 45; // QR más achicado
+                        const startX = 12;
+                        const startY = 40;
+                        const colWidth = 98; // Espaciado entre columnas (12 y 110)
+                        const rowHeight = 55;
+
+                        let currentQrIdx = 0;
+
+                        if (rows.length > 0) {
+                            for (let i = 0; i < rows.length; i++) {
+                                if (currentQrIdx === 0) {
+                                    doc.addPage('a4', 'portrait');
+                                    doc.setFont("helvetica", "bold");
+                                    doc.setFontSize(24);
+                                    doc.setTextColor(15, 23, 42); // slate-900
+                                    doc.text("RESUMEN PARA ESCANEO DE PILA", 105, 25, { align: "center" });
+                                    
+                                    doc.setFontSize(10);
+                                    doc.setTextColor(100, 100, 100);
+                                    doc.text("Escanee estos Códigos QR sin necesidad de alcanzar cada bobina físicamente.", 105, 32, { align: "center" });
+                                }
+
+                                const rowData = rows[i];
+                                const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
+                                const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
+                                
+                                const qrImg = await getQRCodeDataURL(qrData);
+
+                                const col = currentQrIdx % qrCols;
+                                const row = Math.floor(currentQrIdx / qrCols);
+
+                                const x = startX + (col * colWidth);
+                                const y = startY + (row * rowHeight);
+                                const boxWidth = 92;
+
+                                // Dibujar Caja Externa de la Tarjeta
+                                doc.setDrawColor(203, 213, 225); // slate-300
+                                doc.setLineWidth(0.4);
+                                doc.setFillColor(255, 255, 255);
+                                doc.roundedRect(x - 2, y - 2, boxWidth, qrSize + 4, 3, 3, 'FD');
+
+                                // Dibujar QR
+                                doc.setDrawColor(0, 0, 0);
+                                doc.addImage(qrImg, 'PNG', x, y, qrSize, qrSize);
+
+                                // Contenidos de Texto (AL LADO DEL QR)
+                                const textX = x + qrSize + 3;
+                                let textY = y + 7;
+                                const rightLimitX = x + boxWidth - 4;
+
+                                const limitStr = (str, n) => str ? (str.length > n ? str.substring(0, n) + "..." : str) : "S/D";
+
+                                // Fila Info
+                                doc.setFont("helvetica", "bold");
+                                doc.setFontSize(12);
+                                doc.setTextColor(37, 99, 235); // azureish
+                                doc.text(`FILA ${i + 1}`, textX, textY);
+
+                                // Kilos
+                                doc.setFontSize(11);
+                                doc.setTextColor(0, 0, 0);
+                                doc.text(`${rowData.kg || '0'} kg`, rightLimitX, textY, { align: "right" });
+
+                                // Separador
+                                doc.setDrawColor(226, 232, 240); // slate-200
+                                doc.line(textX, textY + 2.5, rightLimitX, textY + 2.5);
+
+                                textY += 8;
+
+                                // TIPO DE PAPEL
+                                doc.setFont("helvetica", "bold");
+                                doc.setFontSize(8);
+                                doc.setTextColor(0, 0, 0);
+                                const splitTipo = doc.splitTextToSize(rowData.tipo || 'S/D', rightLimitX - textX);
+                                doc.text(splitTipo.slice(0,2), textX, textY); // Max 2 lineas
+
+                                textY += splitTipo.length > 1 ? 9 : 6;
+
+                                // PROVEEDOR Y LOTE
+                                doc.setFontSize(6);
+                                doc.setFont("helvetica", "normal");
+                                doc.setTextColor(148, 163, 184); // slate-400
+                                doc.text(`PROVEEDOR:`, textX, textY);
+                                textY += 3.5;
+                                
+                                doc.setFontSize(8);
+                                doc.setFont("helvetica", "bold");
+                                doc.setTextColor(51, 65, 85); // slate-700
+                                doc.text(limitStr(rowData.proveedor, 18), textX, textY);
+
+                                textY += 6;
+
+                                doc.setFontSize(6);
+                                doc.setFont("helvetica", "normal");
+                                doc.setTextColor(148, 163, 184);
+                                doc.text(`LOTE PROV:`, textX, textY);
+                                if (rowData.corte) {
+                                    doc.text(`ANCHO HIJA:`, rightLimitX, textY, { align: "right" });
+                                }
+                                textY += 3.5;
+                                
+                                doc.setFontSize(8);
+                                doc.setFont("helvetica", "bold");
+                                doc.setTextColor(51, 65, 85);
+                                doc.text(limitStr(rowData.loteMadre, 14), textX, textY);
+                                if (rowData.corte) {
+                                    doc.text(`${rowData.corte} mm`, rightLimitX, textY, { align: "right" });
+                                }
+
+                                currentQrIdx++;
+                                if (currentQrIdx >= qrCols * qrRowsPerPage) {
+                                    currentQrIdx = 0;
+                                }
+                            }
+                        }
+                        } // Cerramos if (printMode === 'pila')
+                        // END RESUMEN PARA ESCANEO
+
+                        if (printMode === 'individual') {
+                            for (let i = 0; i < rows.length; i++) {
+                                doc.addPage('a4', 'portrait');
+                                const rowData = rows[i];
+                                const opType = isDevolucion ? "DEVOLUCION" : "INGRESO";
+                                const qrData = `UID:${rowData.uid}|OP:${opType}|PROV:${rowData.proveedor}|FECHA:${formatDateDisplay(rowData.fecha)}|KG:${rowData.kg}|L.PROV:${rowData.loteMadre}|L.PROD:${rowData.loteHija}|A.HIJA:${rowData.corte}|SKU:${rowData.sku}`;
+                                await drawBobinaLabelNative(doc, rowData, empresa, qrData, isDevolucion);
+                            }
                         }
 
                         const fileName = `Impresion_Logistica_${formatDateDisplay(today).replace(/\//g, '-')}.pdf`;
@@ -962,7 +1087,26 @@
                                     </div>
                                 ) : (
                                     <>
-                                        <h3 className="font-black text-2xl text-slate-900 mb-6">Emisión de Rótulos</h3>
+                                        <h3 className="font-black text-2xl text-slate-900 mb-4">Modalidad de Rotulado</h3>
+                                        
+                                        <div className="grid grid-cols-1 gap-3 mb-6 flex-col text-left">
+                                            <label className={`cursor-pointer rounded-2xl p-4 border-2 transition-all flex items-start gap-3 ${printMode === 'pila' ? 'border-indigo-600 bg-indigo-50 shadow-md shadow-indigo-500/10' : 'border-slate-200 bg-white hover:border-indigo-300'}`}>
+                                                <input type="radio" name="printMode" value="pila" className="mt-1 w-5 h-5 accent-indigo-600 shrink-0" checked={printMode === 'pila'} onChange={() => setPrintMode('pila')} />
+                                                <div>
+                                                    <span className="font-black text-slate-800 block mb-1">Rotulado de Pila</span>
+                                                    <span className="text-xs text-slate-500 leading-tight block">Imprime el resumen general con QRs agrupados, omitiendo hojas individuales (Recomendado).</span>
+                                                </div>
+                                            </label>
+
+                                            <label className={`cursor-pointer rounded-2xl p-4 border-2 transition-all flex items-start gap-3 ${printMode === 'individual' ? 'border-orange-500 bg-orange-50 shadow-md shadow-orange-500/10' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
+                                                <input type="radio" name="printMode" value="individual" className="mt-1 w-5 h-5 accent-orange-500 shrink-0" checked={printMode === 'individual'} onChange={() => setPrintMode('individual')} />
+                                                <div>
+                                                    <span className="font-black text-slate-800 block mb-1">Rotulado Individual</span>
+                                                    <span className="text-xs text-slate-500 leading-tight block">Imprime hojas A4 completas por cada bobina descartando la hoja de resumen general de QRs.</span>
+                                                </div>
+                                            </label>
+                                        </div>
+
                                         <div className="space-y-4">
                                             <button onClick={() => procesarCierreLista('download')} className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-4 rounded-xl font-bold text-lg transition-colors">
                                                 <Icon name="printer" size={24} /> Descargar PDF

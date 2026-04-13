@@ -92,6 +92,7 @@
                 filePdf: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
                 upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
                 trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+                close: "M18 6L6 18M6 6l12 12",
                 check: "M20 6L9 17l-5-5",
                 share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8 M16 6l-4-4-4 4 M12 2v13",
                 printer: "M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z",
@@ -213,7 +214,19 @@
             const [isOutputScanning, setIsOutputScanning] = useState(false);
             const scannerRef = useRef(null);
             const insumosDBRef = useRef([]);
-            const lastScannedTime = useRef(0);
+
+            // Scanner Modes
+            const [scanMode, setScanMode] = useState('auto'); // 'auto' | 'manual'
+            const [qrLocked, setQrLocked] = useState(false);
+            const currentScanPayload = useRef(null);
+            const qrLockTimer = useRef(null);
+            const scanModeRef = useRef('auto');
+            
+            useEffect(() => { scanModeRef.current = scanMode; }, [scanMode]);
+
+            // Track last processed manual/auto to avoid duplicate instant scans
+            const lastProcessedCode = useRef(null);
+            const lastProcessedTime = useRef(0);
 
             useEffect(() => { localStorage.setItem('molderilScanned', JSON.stringify(scannedItems)); }, [scannedItems]);
 
@@ -254,71 +267,99 @@
                 } else { setIsOutputScanning(false); }
             };
 
+            const procesarCodigoQR = (decodedText) => {
+                if (scanModeRef.current === 'auto') {
+                    if (decodedText === lastProcessedCode.current && (Date.now() - lastProcessedTime.current < 2000)) return;
+                }
+                
+                lastProcessedCode.current = decodedText;
+                lastProcessedTime.current = Date.now();
+
+                let isValid = false;
+                let parts = [];
+
+                if (decodedText.includes("UID:") && decodedText.includes("SKU:")) {
+                    isValid = true;
+                    parts = decodedText.split("|");
+                }
+
+                if (isValid) {
+                    let newItem = { uid: '', proveedor: '', tipo: '', kg: '', loteMadre: '', loteHija: '', corte: '', sku: '', gramaje: '', ancho: '', fecha: today };
+                    parts.forEach(p => {
+                        const idx = p.indexOf(":");
+                        if (idx === -1) return;
+                        const val = p.substring(idx + 1).trim();
+
+                        if (p.startsWith("UID:")) newItem.uid = val;
+                        else if (p.startsWith("PROV:")) newItem.proveedor = val;
+                        else if (p.startsWith("TIPO:")) newItem.tipo = val;
+                        else if (p.startsWith("KG:")) newItem.kg = val;
+                        else if (p.startsWith("L.PROV:")) newItem.loteMadre = val;
+                        else if (p.startsWith("L.PROD:")) newItem.loteHija = val;
+                        else if (p.startsWith("A.HIJA:")) newItem.corte = val;
+                        else if (p.startsWith("SKU:")) newItem.sku = val;
+                        else if (p.startsWith("FECHA:")) newItem.fecha = val;
+                    });
+
+                    const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                    if (newItem.sku && insumosDBRef.current.length > 0) {
+                        const exactMatch = insumosDBRef.current.find(item => norm(item.sku) === norm(newItem.sku));
+                        if (exactMatch) {
+                            if (!newItem.tipo) newItem.tipo = exactMatch.tipo;
+                            if (!newItem.gramaje) newItem.gramaje = exactMatch.gramaje;
+                            if (!newItem.ancho) newItem.ancho = exactMatch.ancho;
+                            if (!newItem.proveedor) newItem.proveedor = exactMatch.proveedor;
+                        }
+                    }
+
+                    setScannedItems(prev => {
+                        if (prev.some(i => i.uid === newItem.uid)) {
+                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                            osc.connect(gain); gain.connect(ctx.destination);
+                            osc.type = 'square'; osc.frequency.setValueAtTime(200, ctx.currentTime);
+                            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                            osc.start(); osc.stop(ctx.currentTime + 0.3);
+                            alert(`⚠️ Esta bobina ya fue escaneada:\n${newItem.sku} — UID: ${newItem.uid}`);
+                            return prev;
+                        }
+                        playSuccessSound();
+                        return [newItem, ...prev];
+                    });
+                }
+            };
+
+            const handleManualCapture = () => {
+                if (qrLocked && currentScanPayload.current) {
+                    procesarCodigoQR(currentScanPayload.current);
+                    setQrLocked(false);
+                    currentScanPayload.current = null;
+                } else {
+                    alert("Enfoque un código de bobina para capturar.");
+                }
+            };
+
             useEffect(() => {
                 if (isOutputScanning) {
                     const scanner = new Html5Qrcode("reader-salidas");
                     scannerRef.current = scanner;
                     scanner.start(
                         { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        { fps: 15, qrbox: { width: 250, height: 250 } },
                         (decodedText) => {
-                            if (Date.now() - lastScannedTime.current < 2000) return;
-                            lastScannedTime.current = Date.now();
+                            // Cargar buffer
+                            currentScanPayload.current = decodedText;
+                            setQrLocked(true);
+                            
+                            clearTimeout(qrLockTimer.current);
+                            qrLockTimer.current = setTimeout(() => {
+                                setQrLocked(false);
+                                currentScanPayload.current = null;
+                            }, 400);
 
-                            let isValid = false;
-                            let parts = [];
-
-                            // Solo formato actual: UID:xxx|OP:xxx|...|SKU:xxx
-                            if (decodedText.includes("UID:") && decodedText.includes("SKU:")) {
-                                isValid = true;
-                                parts = decodedText.split("|");
-                            }
-
-                            if (isValid) {
-                                let newItem = { uid: '', proveedor: '', tipo: '', kg: '', loteMadre: '', loteHija: '', corte: '', sku: '', gramaje: '', ancho: '', fecha: today };
-                                parts.forEach(p => {
-                                    const idx = p.indexOf(":");
-                                    if (idx === -1) return;
-                                    const val = p.substring(idx + 1).trim();
-
-                                    if (p.startsWith("UID:")) newItem.uid = val;
-                                    else if (p.startsWith("PROV:")) newItem.proveedor = val;
-                                    else if (p.startsWith("TIPO:")) newItem.tipo = val;
-                                    else if (p.startsWith("KG:")) newItem.kg = val;
-                                    else if (p.startsWith("L.PROV:")) newItem.loteMadre = val;
-                                    else if (p.startsWith("L.PROD:")) newItem.loteHija = val;
-                                    else if (p.startsWith("A.HIJA:")) newItem.corte = val;
-                                    else if (p.startsWith("SKU:")) newItem.sku = val;
-                                    else if (p.startsWith("FECHA:")) newItem.fecha = val;
-                                });
-
-                                // Completar datos faltantes desde la BD por SKU
-                                const norm = str => String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-                                if (newItem.sku && insumosDBRef.current.length > 0) {
-                                    const exactMatch = insumosDBRef.current.find(item => norm(item.sku) === norm(newItem.sku));
-                                    if (exactMatch) {
-                                        if (!newItem.tipo) newItem.tipo = exactMatch.tipo;
-                                        if (!newItem.gramaje) newItem.gramaje = exactMatch.gramaje;
-                                        if (!newItem.ancho) newItem.ancho = exactMatch.ancho;
-                                        if (!newItem.proveedor) newItem.proveedor = exactMatch.proveedor;
-                                    }
-                                }
-
-                                setScannedItems(prev => {
-                                    if (prev.some(i => i.uid === newItem.uid)) {
-                                        // Sonido de error y alerta
-                                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-                                        osc.connect(gain); gain.connect(ctx.destination);
-                                        osc.type = 'square'; osc.frequency.setValueAtTime(200, ctx.currentTime);
-                                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                                        osc.start(); osc.stop(ctx.currentTime + 0.3);
-                                        alert(`⚠️ Esta bobina ya fue escaneada:\n${newItem.sku} — UID: ${newItem.uid}`);
-                                        return prev;
-                                    }
-                                    playSuccessSound();
-                                    return [newItem, ...prev];
-                                });
+                            // Modo instantaneo
+                            if (scanModeRef.current === 'auto') {
+                                procesarCodigoQR(decodedText);
                             }
                         }, () => {}
                     ).catch(err => console.warn("Error iniciando cámara:", err));
@@ -593,10 +634,35 @@
                                         <Icon name="camera" size={24} /> INICIAR LECTURA
                                     </button>
                                 ) : (
-                                    <div className="w-full flex flex-col relative">
-                                        <div id="reader-salidas" className="w-full bg-slate-100 rounded-xl overflow-hidden shadow-inner"></div>
-                                        <button onClick={closeOutputScanner} className="mt-3 w-full bg-red-600/90 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold hover:bg-red-700 shadow-xl border border-red-500/50 flex items-center justify-center gap-2">
-                                            <Icon name="close" /> PAUSAR CÁMARA
+                                    <div className="w-full flex flex-col relative text-left">
+                                        <div id="reader-salidas" className="w-full bg-slate-100 rounded-xl overflow-hidden shadow-inner flex flex-col justify-center min-h-[200px]"></div>
+
+                                        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-[14px] p-1 flex gap-2 w-full">
+                                            <button 
+                                                onClick={() => setScanMode('auto')} 
+                                                className={`flex-1 py-3 text-sm font-black uppercase rounded-xl transition-all ${scanMode === 'auto' ? 'bg-violet-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-200'}`}
+                                            >
+                                                AUTO
+                                            </button>
+                                            <button 
+                                                onClick={() => setScanMode('manual')} 
+                                                className={`flex-1 py-3 text-sm font-black uppercase rounded-xl transition-all ${scanMode === 'manual' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-200'}`}
+                                            >
+                                                MANUAL
+                                            </button>
+                                        </div>
+
+                                        {scanMode === 'manual' && (
+                                            <button 
+                                                onClick={handleManualCapture}
+                                                className={`mt-4 w-full py-4 rounded-xl font-black text-lg tracking-wide transition-all duration-150 flex items-center justify-center gap-2 ${qrLocked ? 'bg-amber-500 hover:bg-amber-600 active:scale-95 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-slate-200 text-slate-400'}`}
+                                            >
+                                                {qrLocked ? <><Icon name="camera" size={24} /> CAPTURAR AHORA</> : 'ENFOQUE UN CÓDIGO...'}
+                                            </button>
+                                        )}
+
+                                        <button onClick={closeOutputScanner} className="mt-4 w-full bg-slate-100 text-red-600 px-6 py-3 rounded-xl font-bold hover:bg-red-50 flex items-center justify-center gap-2 transition-colors">
+                                            <Icon name="close" size={20} /> Ocultar Cámara
                                         </button>
                                     </div>
                                 )}
