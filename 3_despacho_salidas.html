@@ -25,53 +25,48 @@
             display: flex;
             flex-direction: column;
             flex: 1;
-            overflow: hidden;
+            /* Se evita el overflow hidden para permitir scroll orgánico en mobile */
         }
         .panel-camera {
-            flex-shrink: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            padding: 1.5rem 1rem;
             position: relative;
             background: #0f172a;
         }
         .panel-list {
-            flex: 1;
             display: flex;
             flex-direction: column;
             background: #f8fafc;
             padding: 1rem;
-            overflow: hidden;
-            min-height: 0;
+            flex: 1;
         }
         .panel-list-scroll {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
+            /* flex: 1 se desactiva en móvil para dejar fluir el contenido */
         }
-        /* Landscape mobile / tablet / desktop: side by side */
+        /* Desktop: Lado a lado y scroll bloqueado global */
         @media (min-width: 768px), (orientation: landscape) {
+            body { height: 100vh; overflow: hidden; }
             .app-main {
                 flex-direction: row;
+                overflow: hidden;
             }
             .panel-camera {
                 width: 45%;
                 max-width: 500px;
                 padding: 2rem;
+                overflow-y: auto;
             }
             .panel-list {
                 padding: 1.5rem;
+                overflow: hidden;
             }
-        }
-        /* Portrait mobile: stacked, camera compact */
-        @media (max-width: 767px) and (orientation: portrait) {
-            .panel-camera {
-                max-height: 45vh;
-            }
-            .panel-list {
-                min-height: 55vh;
+            .panel-list-scroll {
+                flex: 1;
+                overflow-y: auto;
+                min-height: 0;
             }
         }
     </style>
@@ -405,47 +400,58 @@
                         // Agrupar por SKU y ordenar
                         const sorted = [...scannedItems].sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
 
-                        // Construir tabla con separadores y subtotales por tipo
-                        const tableColumn = ["#", "SKU / ART", "TIPO", "PROVEEDOR", "LOTE PROD", "LOTE PROV", "NETO"];
+                        const tableColumn = ["#", "PROVEEDOR", "LOTE PROV", "LOTE PROD", "ANCHO", "NETO"];
                         const tableRows = [];
                         let lastSku = null;
                         let skuCount = 0;
                         let skuKg = 0;
-                        let globalIdx = 0;
+                        let localIdx = 0; // Se reinicia para cada artículo
+                        let firstItemOfSku = null;
 
                         const flushSubtotal = () => {
                             if (lastSku !== null && skuCount > 0) {
                                 const subKgText = skuKg % 1 === 0 ? skuKg.toString() : skuKg.toFixed(2);
                                 tableRows.push([
-                                    { content: `Subtotal ${lastSku}: ${skuCount} bobinas`, colSpan: 6, styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229] } },
+                                    { content: `   Total Despachado: ${skuCount} bobina(s)`, colSpan: 5, styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229] } },
                                     { content: subKgText + ' kg', styles: { fillColor: [238, 242, 255], fontStyle: 'bold', fontSize: 8, textColor: [79, 70, 229], halign: 'right' } }
+                                ]);
+                                // Separador visual entre áreas gruesas de productos
+                                tableRows.push([
+                                    { content: '', colSpan: 6, styles: { fillColor: [255, 255, 255], minCellHeight: 4, lineWidth: 0 } }
                                 ]);
                             }
                         };
 
                         sorted.forEach((r) => {
-                            if (lastSku !== null && lastSku !== r.sku) {
-                                flushSubtotal();
-                                // Separador visual
-                                tableRows.push([
-                                    { content: '', colSpan: 7, styles: { fillColor: [226, 232, 240], minCellHeight: 3 } }
-                                ]);
+                            if (lastSku !== r.sku) {
+                                if (lastSku !== null) flushSubtotal();
+                                lastSku = r.sku;
+                                firstItemOfSku = r;
                                 skuCount = 0;
                                 skuKg = 0;
+                                localIdx = 0;
+                                
+                                // Título Agrupador de SKU y Tipo
+                                tableRows.push([
+                                    { 
+                                        content: `■ ${r.sku || 'SIN CÓDIGO'} — ${r.tipo || 'SIN DESCRIPCIÓN'}`, 
+                                        colSpan: 6, 
+                                        styles: { fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 10, textColor: [15, 23, 42], halign: 'left', cellPadding: 3 } 
+                                    }
+                                ]);
                             }
-                            lastSku = r.sku;
-                            globalIdx++;
+                            
+                            localIdx++;
                             const rkg = parseFloat(String(r.kg || '0').replace(',', '.')) || 0;
                             skuCount++;
                             skuKg += rkg;
 
                             tableRows.push([
-                                globalIdx.toString(),
-                                r.sku || '',
-                                r.tipo || '',
-                                r.proveedor || '',
-                                r.loteHija || '',
-                                r.loteMadre || '',
+                                localIdx.toString(),
+                                r.proveedor || '-',
+                                r.loteMadre || '-',
+                                r.loteHija || '-',
+                                (r.corte && r.corte !== '') ? r.corte + ' mm' : '-',
                                 (r.kg || '0') + ' kg'
                             ]);
                         });
@@ -457,8 +463,8 @@
                             body: tableRows,
                             theme: 'grid',
                             headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
-                            styles: { fontSize: 8, cellPadding: 2 },
-                            columnStyles: { 6: { halign: 'right' } }
+                            styles: { fontSize: 8, cellPadding: 2, lineColor: [226, 232, 240] },
+                            columnStyles: { 5: { halign: 'right' }, 0: { halign: 'center', cellWidth: 10 } }
                         });
 
                         // Firmas
@@ -542,7 +548,7 @@
             };
 
             return (
-                <div className="flex flex-col h-screen">
+                <div className="flex flex-col min-h-screen">
                     {showCloseModal && (
                         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-4">
                             <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl relative">
