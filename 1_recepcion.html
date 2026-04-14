@@ -868,12 +868,18 @@
                             }
                         }
 
-                        // --- INTEGRACION FIREBASE ---
+                        // Limpiar UI Primero (Evitar trabar PDF si falla la red)
+                        setRows([]);
+                        setEditingId(null);
+                        setShowCloseModal(false);
+                        setIsGeneratingPdf(false);
+
+                        // --- INTEGRACION FIREBASE (Fire and forget asincrónico a la nube) ---
                         if (window.firebaseDB && rows.length > 0) {
                             try {
                                 const db = window.firebaseDB;
                                 const batch = db.batch();
-                                rows.forEach(async (r) => {
+                                rows.forEach((r) => { // Removido el async innecesario del forEach
                                     const docRef = db.collection("bobinas").doc(String(r.uid));
                                     batch.set(docRef, { 
                                         ...r, 
@@ -888,17 +894,13 @@
                                         modulo: '1_recepcion'
                                     });
                                 });
-                                await batch.commit();
-                                console.log('[Firebase] Bobinas registradas en la nube.');
+                                batch.commit()
+                                    .then(() => console.log('[Firebase] Bobinas registradas en la nube.'))
+                                    .catch((error) => console.error('[Firebase] Error asincrónico al sincronizar:', error));
                             } catch (error) {
-                                console.error('[Firebase] Error al sincronizar:', error); // Falla silenciosa permitida si no hay conexión
+                                console.error('[Firebase] Catch interno:', error);
                             }
                         }
-
-                        setRows([]);
-                        setEditingId(null);
-                        setShowCloseModal(false);
-                        setIsGeneratingPdf(false);
                     } catch (err) {
                         console.error(err);
                         alert("Error al generar PDF: " + err.message);

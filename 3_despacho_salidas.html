@@ -557,12 +557,17 @@
                             }
                         }
 
+                        // Limpiar UI Primero
+                        setScannedItems([]);
+                        setShowCloseModal(false);
+                        setIsGeneratingPdf(false);
+
                         // --- FIREBASE: ACTUALIZACION DE ESTADO ---
                         if (window.firebaseDB && scannedItems.length > 0) {
                             try {
                                 const db = window.firebaseDB;
                                 const batch = db.batch();
-                                scannedItems.forEach(async (r) => {
+                                scannedItems.forEach((r) => {
                                     const docRef = db.collection("bobinas").doc(String(r.uid));
                                     batch.update(docRef, { 
                                         estado: 'EN_PRODUCCION', 
@@ -576,16 +581,13 @@
                                         modulo: '3_despachos'
                                     });
                                 });
-                                await batch.commit();
-                                console.log('[Firebase] Bobinas despachadas actualizadas.');
+                                batch.commit()
+                                    .then(() => console.log('[Firebase] Bobinas despachadas actualizadas.'))
+                                    .catch(e => console.error('[Firebase] Error asincrónico al actualizar BD:', e));
                             } catch (error) {
-                                console.error('[Firebase] Error al actualizar BD:', error); 
+                                console.error('[Firebase] Catch interno:', error); 
                             }
                         }
-
-                        setScannedItems([]);
-                        setShowCloseModal(false);
-                        setIsGeneratingPdf(false);
                     } catch (err) {
                         console.error(err);
                         alert("Error al generar PDF: " + err.message);
