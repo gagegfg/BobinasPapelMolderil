@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4. Auditoría y Consultas (Firebase) - Molderil S.A.</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase Compat SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-AUZXyHJomiXUdq2WUHfNc3sq98lxfqI",
+            authDomain: "bobinasdepapel-bc868.firebaseapp.com",
+            projectId: "bobinasdepapel-bc868",
+            storageBucket: "bobinasdepapel-bc868.firebasestorage.app",
+            messagingSenderId: "19511081893",
+            appId: "1:19511081893:web:2462660ba1b86d32c6064c",
+            measurementId: "G-4JVH7GKD1R"
+        };
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            window.firebaseDB = firebase.firestore();
+        } catch (e) {
+            console.error("Firebase no configurado", e);
+        }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const Icon = ({ name, className = "", size = 24 }) => {
+            const icons = {
+                search: <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+                database: <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />,
+                history: <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />,
+                x: <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />,
+                loader: <path strokeLinecap="round" strokeLinejoin="round" d="M4 12a8 8 0 018-8A8 8 0 0120 12" />,
+                trash: <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            };
+            if(!icons[name]) return null;
+            return (
+                <svg className={className || "w-6 h-6"} width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    {icons[name]}
+                </svg>
+            );
+        };
+
+        const DashboardConsultas = () => {
+            const [query, setQuery] = useState("");
+            const [filterField, setFilterField] = useState("loteMadre");
+            const [results, setResults] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [selectedBobina, setSelectedBobina] = useState(null);
+            const [history, setHistory] = useState([]);
+            const [loadingHistory, setLoadingHistory] = useState(false);
+
+            const handleSearch = async (e) => {
+                if (e) e.preventDefault();
+                if (!window.firebaseDB) return alert("Firebase no está configurado aún (Pega tus Keys en el código).");
+                if (!query.trim()) return setResults([]);
+
+                setLoading(true);
+                try {
+                    const db = window.firebaseDB;
+                    let data = [];
+                    const snapshot = await db.collection("bobinas").orderBy("ultimaModificacion", "desc").limit(1000).get();
+                    
+                    snapshot.forEach(doc => {
+                        data.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    const qTerm = query.toLowerCase().trim();
+                    const filtered = data.filter(b => {
+                        const val = String(b[filterField] || '').toLowerCase();
+                        return val.includes(qTerm);
+                    });
+
+                    setResults(filtered);
+                } catch (error) {
+                    console.error("Error buscando:", error);
+                    alert("Error consultando Base de Datos. Revisa los permisos de Firebase.");
+                }
+                setLoading(false);
+            };
+
+            const viewHistory = async (bobina) => {
+                setSelectedBobina(bobina);
+                setHistory([]);
+                setLoadingHistory(true);
+                try {
+                    const snapshot = await window.firebaseDB
+                        .collection("bobinas")
+                        .doc(bobina.uid)
+                        .collection("historial")
+                        .orderBy("fecha", "desc")
+                        .get();
+                    
+                    let histData = [];
+                    snapshot.forEach(doc => {
+                        histData.push({ id: doc.id, ...doc.data() });
+                    });
+                    setHistory(histData);
+                } catch (e) {
+                    console.error("Error cargando historial", e);
+                }
+                setLoadingHistory(false);
+            };
+
+            const handleDelete = async (bobina) => {
+                if(bobina.estado !== 'EN_DEPOSITO') {
+                    return alert("Solo se pueden eliminar bobinas que estén en estado EN_DEPOSITO. Si ya fue consumida o despachada, no se puede borrar.");
+                }
+                const confirm = window.confirm(`¿⚠️ ESTÁS SEGURO?\nVas a eliminar completamente la bobina ${bobina.uid} (${bobina.sku}).\nEsta acción es irreversible y deberás volver a generarla en Recepción si te equivocaste.`);
+                if (!confirm) return;
+
+                try {
+                    await window.firebaseDB.collection('bobinas').doc(bobina.uid).delete();
+                    setResults(prev => prev.filter(b => b.uid !== bobina.uid));
+                    alert("✅ Bobina eliminada con éxito de la base de datos.");
+                } catch (e) {
+                    console.error("Error borrando", e);
+                    alert("Error al intentar borrar la bobina.");
+                }
+            };
+
+            const getStatusColor = (estado) => {
+                if(estado === 'EN_DEPOSITO') return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+                if(estado === 'EN_PRODUCCION') return 'bg-amber-100 text-amber-700 border border-amber-200';
+                if(estado === 'CONSUMIDA') return 'bg-slate-100 text-slate-700 border border-slate-200';
+                if(estado === 'DEVUELTA') return 'bg-blue-100 text-blue-700 border border-blue-200';
+                return 'bg-gray-100 text-gray-700 border border-gray-200';
+            };
+
+            return (
+                <div className="flex h-screen overflow-hidden">
+                    <div className="flex-1 flex flex-col min-w-0">
+                        <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm z-10 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-violet-600 p-2.5 rounded-xl shadow-lg flex items-center justify-center text-white">
+                                    <Icon name="database" size={24} />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">Tablero de Trazabilidad</h1>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Auditoría Global Molderil</p>
+                                </div>
+                            </div>
+                            <a href="index.html" className="text-sm font-bold text-violet-600 hover:text-violet-800 transition-colors flex items-center bg-violet-50 px-4 py-2 rounded-xl">
+                                ← Volver al Menú
+                            </a>
+                        </header>
+
+                        <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50">
+                            <div className="max-w-7xl mx-auto space-y-6">
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6">
+                                    <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 items-end">
+                                        <div className="flex-1 w-full space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Filtrar por</label>
+                                            <select 
+                                                value={filterField} 
+                                                onChange={(e) => setFilterField(e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-medium text-slate-700"
+                                            >
+                                                <option value="loteMadre">Lote de Proveedor</option>
+                                                <option value="loteHija">Lote de Producción (Hija)</option>
+                                                <option value="sku">Artículo (SKU)</option>
+                                                <option value="uid">ID Único de Bobina (UID)</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="flex-[2] w-full space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Término de búsqueda</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                                    <Icon name="search" size={20} />
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    value={query}
+                                                    onChange={(e) => setQuery(e.target.value)}
+                                                    placeholder="Escriba fragmento para buscar..."
+                                                    className="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-medium text-slate-800 placeholder-slate-400 shadow-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            type="submit" 
+                                            disabled={loading}
+                                            className="w-full md:w-auto bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {loading ? <Icon name="loader" className="animate-spin" /> : 'Buscar'}
+                                        </button>
+                                    </form>
+                                    
+                                    {results.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-sm font-medium text-slate-500">
+                                            <span>Se encontraron <strong>{results.length}</strong> bobinas.</span>
+                                            <span className="italic text-xs">Mostrando coincidencias.</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse whitespace-nowrap">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-black uppercase tracking-wider text-slate-500">
+                                                    <th className="p-4 pl-6">Estado</th>
+                                                    <th className="p-4">UID Bobina</th>
+                                                    <th className="p-4">Artículo y Proveedor</th>
+                                                    <th className="p-4">Lote Prov.</th>
+                                                    <th className="p-4 text-right">Kilos</th>
+                                                    <th className="p-4 text-center">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-sm">
+                                                {results.length === 0 && !loading && (
+                                                    <tr>
+                                                        <td colSpan="6" className="p-8 text-center text-slate-500 font-medium whitespace-break-spaces">
+                                                            {query ? `No existen registros que contengan "${query}" en el campo seleccionado.` : 'Esperando búsqueda...'}
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                                {loading && (
+                                                    <tr>
+                                                        <td colSpan="6" className="p-8 text-center italic text-slate-500"><Icon name="loader" className="inline animate-spin mr-2"/> Consultando Base de Datos...</td>
+                                                    </tr>
+                                                )}
+                                                {results.map((row) => (
+                                                    <tr key={row.uid} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="p-4 pl-6">
+                                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${getStatusColor(row.estado)}`}>
+                                                                {row.estado || 'SIN ESTADO'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 font-mono font-bold text-slate-700">{row.uid}</td>
+                                                        <td className="p-4">
+                                                            <div className="font-bold text-slate-900">{row.sku}</div>
+                                                            <div className="text-xs font-medium text-slate-500">{row.proveedor}</div>
+                                                        </td>
+                                                        <td className="p-4 font-bold text-slate-700">{row.loteMadre || '-'}</td>
+                                                        <td className="p-4 text-right font-black text-blue-600">{row.kg} kg</td>
+                                                        <td className="p-4 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button 
+                                                                    onClick={() => viewHistory(row)}
+                                                                    title="Ver Trazabilidad"
+                                                                    className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors border border-slate-200"
+                                                                >
+                                                                    <Icon name="history" size={16} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleDelete(row)}
+                                                                    title="Eliminar registro"
+                                                                    className="inline-flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors border border-red-200"
+                                                                >
+                                                                    <Icon name="trash" size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {selectedBobina && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
+                                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl">
+                                    <div>
+                                        <h3 className="font-black text-xl text-slate-900">Historial de Vida de Bobina</h3>
+                                        <p className="text-sm font-medium text-slate-500 mt-1">UID: <span className="font-mono text-slate-700">{selectedBobina.uid}</span></p>
+                                    </div>
+                                    <button onClick={() => setSelectedBobina(null)} className="w-10 h-10 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition-colors">
+                                        <Icon name="x" size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 pb-12 overflow-y-auto custom-scrollbar bg-white">
+                                    {loadingHistory ? (
+                                        <div className="flex justify-center p-8"><Icon name="loader" className="animate-spin text-slate-400 w-8 h-8"/></div>
+                                    ) : (
+                                        <div className="relative pl-4 border-l-2 border-slate-200 space-y-8 ml-2 mt-4">
+                                            {history.map((evento, idx) => {
+                                                const d = new Date(evento.fecha);
+                                                return (
+                                                    <div key={idx} className="relative">
+                                                        <div className="absolute -left-[25px] w-4 h-4 bg-white border-4 border-violet-500 rounded-full shadow-sm"></div>
+                                                        <div className="-mt-1.5">
+                                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{d.toLocaleDateString()} a las {d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                            <h4 className="font-black text-slate-900 text-lg mt-0.5">{evento.evento || evento.estado}</h4>
+                                                            <p className="text-sm font-medium text-slate-600 mt-0.5 text-slate-500">Módulo de origen: <span className="font-bold text-slate-700">{evento.modulo || 'Sistema'}</span></p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {history.length === 0 && (
+                                                <p className="text-slate-500 font-medium italic">No hay eventos registrados en línea.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-6 border-t border-slate-100 bg-white rounded-b-3xl shrink-0">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm shadow-inner">
+                                        <div className="grid grid-cols-2 gap-y-3">
+                                            <div><span className="text-slate-500 block text-[10px] font-black uppercase tracking-widest">Proveedor</span><span className="font-bold text-slate-800">{selectedBobina.proveedor}</span></div>
+                                            <div><span className="text-slate-500 block text-[10px] font-black uppercase tracking-widest">Lote Prod (Hija)</span><span className="font-bold text-slate-800">{selectedBobina.loteHija || '-'}</span></div>
+                                            <div><span className="text-slate-500 block text-[10px] font-black uppercase tracking-widest">Artículo</span><span className="font-bold text-slate-800">{selectedBobina.sku}</span></div>
+                                            <div><span className="text-slate-500 block text-[10px] font-black uppercase tracking-widest">Peso Original</span><span className="font-black text-violet-600">{selectedBobina.kg} kg</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DashboardConsultas />);
+    </script>
+</body>
+</html>

@@ -52,69 +52,90 @@
             <p class="text-lg text-slate-500">Seleccione el módulo correspondiente a su rol para iniciar sus tareas logísticas o de solicitud de materiales.</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full max-w-7xl">
             
             <!-- Módulo 1: Recepción Logística -->
-            <a href="1_recepcion.html" class="module-card bg-white rounded-2xl p-8 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-blue-500">
+            <a href="1_recepcion.html" class="module-card bg-white rounded-2xl p-6 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-blue-500">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6"/>
                     </svg>
                 </div>
-                <div class="bg-blue-100 text-blue-600 w-16 h-16 rounded-xl flex items-center justify-center mb-6 shadow-inner relative z-10">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="bg-blue-100 text-blue-600 w-14 h-14 rounded-xl flex items-center justify-center mb-5 shadow-inner relative z-10">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2v20 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-black text-slate-800 mb-2 relative z-10">1. Recepción e Ingresos</h3>
-                <p class="text-slate-500 font-medium relative z-10 mb-6">Operario Logístico o Despacho.</p>
-                <div class="flex flex-col gap-2 relative z-10">
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Generación de Rótulos QR</span>
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Armado y Resumen de Pallet</span>
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Identificación de bobinas entrantes</span>
+                <h3 class="text-xl font-black text-slate-800 mb-2 relative z-10">1. Recepción</h3>
+                <p class="text-slate-500 text-sm font-medium relative z-10 mb-5">Operario Logístico o Despacho.</p>
+                <div class="flex flex-col gap-1.5 relative z-10">
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Generación de Rótulos QR</span>
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Armado y Resumen de Pallet</span>
                 </div>
             </a>
 
             <!-- Módulo 2: Requerimientos Producción -->
-            <a href="2_pedido_produccion.html" class="module-card bg-white rounded-2xl p-8 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-emerald-500">
+            <a href="2_pedido_produccion.html" class="module-card bg-white rounded-2xl p-6 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-emerald-500">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8"/>
                     </svg>
                 </div>
-                <div class="bg-emerald-100 text-emerald-600 w-16 h-16 rounded-xl flex items-center justify-center mb-6 shadow-inner relative z-10">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="bg-emerald-100 text-emerald-600 w-14 h-14 rounded-xl flex items-center justify-center mb-5 shadow-inner relative z-10">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-black text-slate-800 mb-2 relative z-10">2. Pedido Producción</h3>
-                <p class="text-slate-500 font-medium relative z-10 mb-6">Supervisor Módulo Producción.</p>
-                <div class="flex flex-col gap-2 relative z-10">
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Generar Lista de Requerimientos</span>
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Especificar Kg e Insumos</span>
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Emisión de Reporte Oficial (PDF)</span>
+                <h3 class="text-xl font-black text-slate-800 mb-2 relative z-10">2. Requerimientos</h3>
+                <p class="text-slate-500 text-sm font-medium relative z-10 mb-5">Supervisor de Producción.</p>
+                <div class="flex flex-col gap-1.5 relative z-10">
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Elaborar Solicitud Materiales</span>
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Emitir Reporte PDF</span>
                 </div>
             </a>
 
             <!-- Módulo 3: Salidas y Despacho -->
-            <a href="3_despacho_salidas.html" class="module-card bg-white rounded-2xl p-8 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-amber-500">
+            <a href="3_despacho_salidas.html" class="module-card bg-white rounded-2xl p-6 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-amber-500">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M5 12h14 M12 5l7 7-7 7"/>
                     </svg>
                 </div>
-                <div class="bg-amber-100 text-amber-600 w-16 h-16 rounded-xl flex items-center justify-center mb-6 shadow-inner relative z-10">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="bg-amber-100 text-amber-600 w-14 h-14 rounded-xl flex items-center justify-center mb-5 shadow-inner relative z-10">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <circle cx="12" cy="12" r="3"/>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-black text-slate-800 mb-2 relative z-10">3. Salidas Depósito</h3>
-                <p class="text-slate-500 font-medium relative z-10 mb-6">Operario de Depósito (Celular).</p>
-                <div class="flex flex-col gap-2 relative z-10">
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Escáner Dinámico por Cámara</span>
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Cruce con Pedido de Producción</span>
-                    <span class="flex items-center gap-2 text-sm text-slate-600"><svg width="16" height="16" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Cierre de Remito (Admin)</span>
+                <h3 class="text-xl font-black text-slate-800 mb-2 relative z-10">3. Salidas Depósito</h3>
+                <p class="text-slate-500 text-sm font-medium relative z-10 mb-5">Operario logístico (Celular / Desktop).</p>
+                <div class="flex flex-col gap-1.5 relative z-10">
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Escáner Inteligente con Firebase</span>
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Cierre Automático PDF</span>
+                </div>
+            </a>
+
+            <!-- Módulo 4: Monitor y Consultas (NUEVO) -->
+            <a href="4_consultas_historial.html" class="module-card bg-white rounded-2xl p-6 border border-slate-200 overflow-hidden relative group block focus:outline-none focus:ring-4 focus:ring-violet-500">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+                <div class="bg-violet-100 text-violet-600 w-14 h-14 rounded-xl flex items-center justify-center mb-5 shadow-inner relative z-10">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <path d="M2 15h10"></path>
+                        <path d="M9 18l3-3-3-3"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 mb-2 relative z-10">4. Consultas y UI</h3>
+                <p class="text-slate-500 text-sm font-medium relative z-10 mb-5">Administrador o Encargado logístico.</p>
+                <div class="flex flex-col gap-1.5 relative z-10">
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Auditoría Base Datos Nube</span>
+                    <span class="flex items-center gap-2 text-xs text-slate-600"><svg width="14" height="14" fill="none" class="text-green-500" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Historial Lotes y Requerimientos</span>
                 </div>
             </a>
 
