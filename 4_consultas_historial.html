@@ -311,13 +311,43 @@
                                         <div className="relative pl-4 border-l-2 border-slate-200 space-y-8 ml-2 mt-4">
                                             {history.map((evento, idx) => {
                                                 const d = new Date(evento.fecha);
+                                                const isDispatch = (evento.evento === 'DESPACHO A PRODUCCIÓN' || evento.estado === 'EN_PRODUCCION');
                                                 return (
-                                                    <div key={idx} className="relative">
+                                                    <div key={idx} className="relative group">
                                                         <div className="absolute -left-[25px] w-4 h-4 bg-white border-4 border-violet-500 rounded-full shadow-sm"></div>
-                                                        <div className="-mt-1.5">
-                                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{d.toLocaleDateString()} a las {d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                                            <h4 className="font-black text-slate-900 text-lg mt-0.5">{evento.evento || evento.estado}</h4>
-                                                            <p className="text-sm font-medium text-slate-600 mt-0.5 text-slate-500">Módulo de origen: <span className="font-bold text-slate-700">{evento.modulo || 'Sistema'}</span></p>
+                                                        <div className="-mt-1.5 flex justify-between items-start">
+                                                            <div>
+                                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{d.toLocaleDateString()} a las {d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                                <h4 className="font-black text-slate-900 text-lg mt-0.5">{evento.evento || evento.estado}</h4>
+                                                                <p className="text-sm font-medium text-slate-600 mt-0.5 text-slate-500">Módulo de origen: <span className="font-bold text-slate-700">{evento.modulo || 'Sistema'}</span></p>
+                                                            </div>
+                                                            {isDispatch && selectedBobina.estado === 'EN_PRODUCCION' && idx === 0 && ( /* Solo dejamos deshacer si es el ultimo evento y la bobina sigue en produccion */
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const confirm = window.confirm(`¿⚠️ ESTÁS SEGURO?\nVas a anular este despacho. La bobina ${selectedBobina.uid} volverá a estar "EN DEPOSITO" y podrá ser despachada nuevamente.`);
+                                                                        if(!confirm) return;
+                                                                        
+                                                                        const db = window.firebaseDB;
+                                                                        const batch = db.batch();
+                                                                        
+                                                                        batch.delete(db.collection('bobinas').doc(selectedBobina.uid).collection('historial').doc(evento.id));
+                                                                        batch.update(db.collection('bobinas').doc(selectedBobina.uid), { estado: 'EN_DEPOSITO' });
+                                                                        
+                                                                        batch.commit().then(() => {
+                                                                            setHistory(prev => prev.filter(e => e.id !== evento.id));
+                                                                            setResults(prev => prev.map(r => r.uid === selectedBobina.uid ? {...r, estado: 'EN_DEPOSITO'} : r));
+                                                                            setSelectedBobina(prev => ({...prev, estado: 'EN_DEPOSITO'}));
+                                                                            alert('✅ Despacho anulado. Bobina restituida a EN_DEPOSITO.');
+                                                                        }).catch(e => {
+                                                                            console.error(e);
+                                                                            alert('Error deshaciendo.');
+                                                                        });
+                                                                    }}
+                                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold text-[11px] uppercase tracking-wide rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                                >
+                                                                    <Icon name="trash" size={14} /> Anular Error
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 );
